@@ -16,9 +16,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import com.teslamotors.protocol.databinding.ActivityMain2Binding
+import com.teslamotors.protocol.databinding.ActivityMainBinding
 import com.teslamotors.protocol.ui.DialogUtil
-import com.teslamotors.protocol.util.createToast
 import com.teslamotors.protocol.util.hasPermission
 import com.teslamotors.protocol.util.hasRequiredBluetoothPermissions
 
@@ -33,17 +32,9 @@ class MainActivity : AppCompatActivity() {
     private val mBluetoothEnablingResult = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
-
         if (it.resultCode == Activity.RESULT_OK) {
-
-            // todo ....
-            // Bluetooth is enabled, good to go
-            createToast(this@MainActivity, "Bluetooth good 2 GO")
             mBluetoothLeService?.startBleScan()
-
         } else {
-            // User dismissed or denied Bluetooth prompt
-            // again and again until user enable bluetooth
             promptEnableBluetooth()
         }
     }
@@ -60,12 +51,12 @@ class MainActivity : AppCompatActivity() {
 
     // -------------------------------------------------------------------------------------------
 
-    private lateinit var rootView: ActivityMain2Binding
+    private lateinit var rootView: ActivityMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        rootView = ActivityMain2Binding.inflate(layoutInflater)
+        rootView = ActivityMainBinding.inflate(layoutInflater)
         setContentView(rootView.root)
 
         // scan and connect to vehicle

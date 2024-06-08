@@ -70,6 +70,8 @@ class BluetoothLeService : Service() {
         mGattCallback = GattCallback(object : GattCallback.ConnectionStateListener {
             override fun onConnected(gatt: BluetoothGatt) {
                 bluetoothLeUtil = BluetoothLeUtil(gatt)
+
+                // auto next step discovery services
                 bluetoothLeUtil.discoveryServices()
             }
 
@@ -79,7 +81,7 @@ class BluetoothLeService : Service() {
             ) {
                 txCharacteristic = tx
                 rxCharacteristic = rx
-
+                // enable notification
                 bluetoothLeUtil.enableNotifications(rx, TESLA_RX_CHARACTERISTIC_DESCRIPTOR_UUID)
             }
 

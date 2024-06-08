@@ -93,7 +93,19 @@ fun littleEndianConversion(bytes: ByteArray): Int {
 
 fun Int.to2ByteArray(): ByteArray = byteArrayOf(shr(8).toByte(), toByte())
 
-fun Int.to4ByteArray(): ByteArray = ByteBuffer.allocate(4)
-    .order(ByteOrder.BIG_ENDIAN)
-    .putInt(this)
-    .array();
+fun Int.to4ByteArray(): ByteArray =
+    ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(this).array()
+
+
+// shared preference
+private const val SP_TAG = "sharedPreference"
+
+private const val sp_name = "count"
+private const val count_name = "count"
+fun Context.countAutoIncrement() = with(getSharedPreferences(sp_name, Context.MODE_PRIVATE)) {
+    var curr = getInt(count_name, 100)
+    Log.d(SP_TAG, "countAutoIncrement: curr count= $curr")
+    edit().putInt(count_name, ++curr).apply()
+    curr
+}
+

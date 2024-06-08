@@ -33,6 +33,7 @@ import com.teslamotors.protocol.util.Operations.EPHEMERAL_KEY_REQUESTING
 import com.teslamotors.protocol.util.Operations.KEY_TO_WHITELIST_ADDING
 import com.teslamotors.protocol.util.TESLA_BLUETOOTH_NAME
 import com.teslamotors.protocol.util.TESLA_RX_CHARACTERISTIC_DESCRIPTOR_UUID
+import com.teslamotors.protocol.util.countAutoIncrement
 
 class BluetoothLeService : Service() {
 
@@ -207,23 +208,15 @@ class BluetoothLeService : Service() {
 
     // step 4 ...............................
     fun authenticate() {
-        val counter = 30; // sharedPreference ... maintain .... 25号用过了
-
-        // val sharedKey: ByteArray = Utils.hexToBytes("169F508FCCAB72B3DEE2A30B4BFD6598")
         val sharedKey: ByteArray = keyStoreUtils.sharedKey
-        val requestMsg = AuthRequest().perform(this, sharedKey, counter)
-
+        val requestMsg = AuthRequest().perform(this, sharedKey, countAutoIncrement())
         bluetoothLeUtil.writeCharacteristic(txCharacteristic, requestMsg, AUTHENTICATING)
     }
 
     // real control
     fun openPassengerDoor() {
-        val counter = 31; // sharedPreference ... maintain ....
-
-        // val sharedKey: ByteArray = Utils.hexToBytes("169F508FCCAB72B3DEE2A30B4BFD6598")
         val sharedKey: ByteArray = keyStoreUtils.sharedKey
-        val requestMsg = ClosuresRequest().perform(this, sharedKey, counter)
-
+        val requestMsg = ClosuresRequest().perform(this, sharedKey, countAutoIncrement())
         bluetoothLeUtil.writeCharacteristic(txCharacteristic, requestMsg, CLOSURES_REQUESTING)
     }
 

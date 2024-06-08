@@ -6,8 +6,10 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
-import com.teslamotors.protocol.util.XIAOMI_ENV_SENSOR_CCC_DESCRIPTOR_UUID
+import com.teslamotors.protocol.util.Operations
 import com.teslamotors.protocol.util.isIndicatable
 import com.teslamotors.protocol.util.isNotifiable
 import com.teslamotors.protocol.util.isWritable
@@ -18,7 +20,23 @@ import java.util.*
 class BluetoothLeUtil(
     private val bluetoothGatt: BluetoothGatt?
 ) {
-    fun writeCharacteristic(characteristic: BluetoothGattCharacteristic, payload: ByteArray) {
+
+    var opera: Operations? = null
+
+    fun discoveryServices() {
+        val discoveryRun = java.lang.Runnable {
+            bluetoothGatt?.discoverServices()
+        }
+        Handler(Looper.getMainLooper()).postDelayed(discoveryRun, 100)
+    }
+
+    fun writeCharacteristic(
+        characteristic: BluetoothGattCharacteristic,
+        payload: ByteArray,
+        operations: Operations? = null
+    ) {
+        opera = operations
+
         val writeType = when {
             characteristic.isWritable() -> BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
             characteristic.isWritableWithoutResponse() -> {
@@ -33,7 +51,7 @@ class BluetoothLeUtil(
                 gatt.writeCharacteristic(characteristic, payload, writeType)
             } else {
                 // Fall back to deprecated version of writeCharacteristic for Android <13
-                gatt.legacyCharacteristicWrite(characteristic, payload, writeType)
+                gatt.legacyCharacteristicWrite(characteristic, payload, writeType, operations)
             }
         } ?: error("Not connected to a BLE device!")
     }
@@ -41,14 +59,19 @@ class BluetoothLeUtil(
     @TargetApi(Build.VERSION_CODES.S)
     @Suppress("DEPRECATION")
     fun BluetoothGatt.legacyCharacteristicWrite(
-        characteristic: BluetoothGattCharacteristic, value: ByteArray, writeType: Int
+        characteristic: BluetoothGattCharacteristic,
+        value: ByteArray,
+        writeType: Int,
+        operations: Operations? = null
     ) {
+        opera = operations
+
         characteristic.writeType = writeType
         characteristic.value = value
         writeCharacteristic(characteristic)
     }
 
-    fun writeDescriptor(descriptor: BluetoothGattDescriptor, payload: ByteArray) {
+    private fun writeDescriptor(descriptor: BluetoothGattDescriptor, payload: ByteArray) {
         bluetoothGatt?.let { gatt ->
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -70,9 +93,7 @@ class BluetoothLeUtil(
         return writeDescriptor(descriptor)
     }
 
-    fun enableNotifications(characteristic: BluetoothGattCharacteristic) {
-        val cccdUuid = UUID.fromString(XIAOMI_ENV_SENSOR_CCC_DESCRIPTOR_UUID)
-
+    fun enableNotifications(characteristic: BluetoothGattCharacteristic, cccdUuid: UUID) {
         val payload = when {
             characteristic.isIndicatable() -> BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
             characteristic.isNotifiable() -> BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
@@ -100,7 +121,7 @@ class BluetoothLeUtil(
         )
     }
 
-    fun disableNotifications(characteristic: BluetoothGattCharacteristic) {
+    fun disableNotifications(characteristic: BluetoothGattCharacteristic, cccdUuid: UUID) {
         if (!characteristic.isNotifiable() && !characteristic.isIndicatable()) {
             Log.e(
                 "ConnectionManager",
@@ -109,7 +130,6 @@ class BluetoothLeUtil(
             return
         }
 
-        val cccdUuid = UUID.fromString(XIAOMI_ENV_SENSOR_CCC_DESCRIPTOR_UUID)
         characteristic.getDescriptor(cccdUuid)?.let { cccDescriptor ->
             if (bluetoothGatt?.setCharacteristicNotification(characteristic, false) == false) {
                 Log.e(

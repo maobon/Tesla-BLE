@@ -6,23 +6,24 @@ import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothProfile
 import android.util.Log
+import com.teslamotors.protocol.util.MessageUtil
+import com.teslamotors.protocol.util.TESLA_RX_CHARACTERISTIC_UUID
+import com.teslamotors.protocol.util.TESLA_SERVICE_UUID
+import com.teslamotors.protocol.util.TESLA_TX_CHARACTERISTIC_UUID
 import com.teslamotors.protocol.util.printGattTable
 import com.teslamotors.protocol.util.toHexString
+import com.teslamotors.protocol.vcsec
 
 class GattCallback(
     private val mStatusListener: ConnectionStateListener
 ) : BluetoothGattCallback() {
 
-    companion object {
-        private const val TAG = "GattCallback"
-    }
-
-    var mBluetoothGatt: BluetoothGatt? = null
-
     interface ConnectionStateListener {
-        fun onConnected()
+        fun onConnected(gatt: BluetoothGatt)
 
-        fun onServiceDiscovered()
+        fun onGetCharacteristics(tx: BluetoothGattCharacteristic, rx: BluetoothGattCharacteristic)
+
+        fun onVehicleResponse(message: vcsec.FromVCSECMessage?)
     }
 
     @SuppressLint("MissingPermission")
@@ -31,41 +32,44 @@ class GattCallback(
 
         if (status == BluetoothGatt.GATT_SUCCESS) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
-                Log.w("BluetoothGattCallback", "Successfully connected to $deviceAddress")
+                Log.w(TAG, "Successfully connected to $deviceAddress")
 
                 // stash BluetoothGatt instance ...
-                mBluetoothGatt = gatt
+                // mBluetoothGatt = gatt
 
-                // createToast(this@MainActivity, "Connected OK")
-                mStatusListener.onConnected()
+                mStatusListener.onConnected(gatt)
 
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                Log.w("BluetoothGattCallback", "Successfully disconnected from $deviceAddress")
+                Log.w(TAG, "Successfully disconnected from $deviceAddress")
                 gatt.close()
             }
 
         } else {
-            Log.w(
-                "BluetoothGattCallback",
-                "Error $status encountered for $deviceAddress! Disconnecting..."
-            )
+            Log.w(TAG, "Error $status encountered for $deviceAddress! Disconnecting...")
             gatt.close()
         }
     }
 
     override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
         with(gatt) {
-            Log.w(
-                "BluetoothGattCallback",
-                "Discovered ${services.size} services for ${device.address}"
-            )
+            Log.w(TAG, "Discovered ${services.size} services for ${device.address}")
 
             // See implementation just above this section
             printGattTable()
             // Consider connection setup as complete here
 
-            mStatusListener.onServiceDiscovered()
+            // .......................
+            val teslaService = getService(TESLA_SERVICE_UUID)
 
+            val characteristicTx = teslaService.run {
+                getCharacteristic(TESLA_TX_CHARACTERISTIC_UUID)
+            }
+
+            val characteristicRx = teslaService.run {
+                getCharacteristic(TESLA_RX_CHARACTERISTIC_UUID)
+            }
+
+            mStatusListener.onGetCharacteristics(characteristicTx, characteristicRx)
         }
     }
 
@@ -78,21 +82,15 @@ class GattCallback(
         with(characteristic) {
             when (status) {
                 BluetoothGatt.GATT_SUCCESS -> {
-                    Log.i(
-                        "BluetoothGattCallback",
-                        "Read characteristic --> $uuid:\n${value.toHexString()}"
-                    )
+                    Log.i(TAG, "Read characteristic --> $uuid:\n${value.toHexString()}")
                 }
 
                 BluetoothGatt.GATT_READ_NOT_PERMITTED -> {
-                    Log.e("BluetoothGattCallback", "Read not permitted for $uuid!")
+                    Log.e(TAG, "Read not permitted for $uuid!")
                 }
 
                 else -> {
-                    Log.e(
-                        "BluetoothGattCallback",
-                        "Characteristic read failed for $uuid, error: $status"
-                    )
+                    Log.e(TAG, "Characteristic read failed for $uuid, error: $status")
                 }
             }
         }
@@ -107,28 +105,16 @@ class GattCallback(
         val uuid = characteristic.uuid
         when (status) {
             BluetoothGatt.GATT_SUCCESS -> {
-
                 val hexString = value.toHexString()
-                Log.i(
-                    "BluetoothGattCallback", "Read characteristic $uuid:\n $hexString"
-                )
-
-                // todo ...............
-                // Log.d(
-                //     TAG, "onCharacteristicRead: ppp=${
-                //         littleEndianConversion(value)
-                //     }"
-                // )
+                Log.i(TAG, "Read characteristic $uuid:\n $hexString")
             }
 
             BluetoothGatt.GATT_READ_NOT_PERMITTED -> {
-                Log.e("BluetoothGattCallback", "Read not permitted for $uuid!")
+                Log.e(TAG, "Read not permitted for $uuid!")
             }
 
             else -> {
-                Log.e(
-                    "BluetoothGattCallback", "Characteristic read failed for $uuid, error: $status"
-                )
+                Log.e(TAG, "Characteristic read failed for $uuid, error: $status")
             }
         }
     }
@@ -138,39 +124,31 @@ class GattCallback(
     override fun onCharacteristicChanged(
         gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic
     ) {
-
         with(characteristic) {
-            Log.i(
-                "BluetoothGattCallback",
-                "Characteristic $uuid changed | value: ${value.toHexString()}"
-            )
+            Log.i(TAG, "Characteristic $uuid changed | value: ${value.toHexString()}")
+            processReceiveMsg(characteristic, value)
         }
     }
 
     override fun onCharacteristicChanged(
         gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, value: ByteArray
     ) {
-
         val newValueHex = value.toHexString()
         with(characteristic) {
-            Log.i("BluetoothGattCallback", "Characteristic $uuid changed | value: $newValueHex")
+            Log.i(TAG, "Characteristic $uuid changed | value: $newValueHex")
+            processReceiveMsg(characteristic, value)
         }
-
-        // ...
-        val str = String(value)
-        Log.d(TAG, "onCharacteristicChanged: str: $str")
-
-        // temp
-        val kk = with(str) {
-            substring(indexOf("T="), lastIndexOf(" "))
-        }
-        Log.d(TAG, "onCharacteristicChanged: $kk")
-
-        // temp
-        val k = with(str) {
-            substring(indexOf("H="), length - 1)
-        }
-        Log.d(TAG, "onCharacteristicChanged: $k")
     }
 
+    private fun processReceiveMsg(characteristic: BluetoothGattCharacteristic, value: ByteArray) {
+        if (characteristic.uuid == TESLA_RX_CHARACTERISTIC_UUID) {
+            val fromVCSECMessage: vcsec.FromVCSECMessage? = MessageUtil.autoChaCha(value)
+            Log.d(TAG, "processReceiveMsg: $fromVCSECMessage")
+            mStatusListener.onVehicleResponse(fromVCSECMessage)
+        }
+    }
+
+    companion object {
+        private const val TAG = "GattCallback"
+    }
 }

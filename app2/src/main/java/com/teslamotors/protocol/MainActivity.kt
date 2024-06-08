@@ -1,335 +1,219 @@
 package com.teslamotors.protocol
 
 import android.Manifest
-import android.bluetooth.BluetoothGatt
-import android.bluetooth.BluetoothGattCharacteristic
-import android.bluetooth.le.BluetoothLeScanner
+import android.app.Activity
+import android.bluetooth.BluetoothAdapter
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.IBinder
 import android.util.Log
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import com.teslamotors.protocol.ble.BluetoothUtil
-import com.teslamotors.protocol.ble.ConnectCallback
-import com.teslamotors.protocol.ble.GattCallback
-import com.teslamotors.protocol.ble.Operations
-import com.teslamotors.protocol.ble.ScannerCallback
-import com.teslamotors.protocol.databinding.ActivityMainBinding
-import com.teslamotors.protocol.keystore.KeyStoreUtils
-import com.teslamotors.protocol.msg.action.AuthRequest
-import com.teslamotors.protocol.msg.action.ClosuresRequest
-import com.teslamotors.protocol.msg.key.AddKeyToWhiteListRequest
-import com.teslamotors.protocol.msg.key.AddKeyVehicleResponse
-import com.teslamotors.protocol.msg.key.EphemeralKeyRequest
-import com.teslamotors.protocol.msg.key.EphemeralKeyVehicleResponse
-import com.teslamotors.protocol.util.JUtils
-import com.teslamotors.protocol.util.MessageUtil
-import com.teslamotors.protocol.vcsec.FromVCSECMessage
+import com.teslamotors.protocol.databinding.ActivityMain2Binding
+import com.teslamotors.protocol.ui.DialogUtil
+import com.teslamotors.protocol.util.createToast
+import com.teslamotors.protocol.util.hasPermission
+import com.teslamotors.protocol.util.hasRequiredBluetoothPermissions
 
 class MainActivity : AppCompatActivity() {
 
-    var operations: Operations = Operations.KEY_TO_WHITELIST_ADDING
-
-    companion object {
-        const val TAG = "MainActivity"
-        const val PERMISSION_REQUEST_CODE = 100
+    private val mPromptDialog: DialogUtil by lazy {
+        DialogUtil(this@MainActivity)
     }
 
-    private lateinit var rootView: ActivityMainBinding
+    private var mBluetoothLeService: BluetoothLeService? = null
 
-    private lateinit var bluetoothLeScanner: BluetoothLeScanner
-    private lateinit var scannerCallback: ScannerCallback
+    private val mBluetoothEnablingResult = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
 
-    // 主类
-    private lateinit var bluetoothGatt: BluetoothGatt
+        if (it.resultCode == Activity.RESULT_OK) {
 
-    // gatt
-    private lateinit var gattCallback: GattCallback
-    // private lateinit var service: BluetoothGattService
+            // todo ....
+            // Bluetooth is enabled, good to go
+            createToast(this@MainActivity, "Bluetooth good 2 GO")
+            mBluetoothLeService?.startBleScan()
 
-    private lateinit var characteristicTx: BluetoothGattCharacteristic
-    private lateinit var characteristicRx: BluetoothGattCharacteristic
+        } else {
+            // User dismissed or denied Bluetooth prompt
+            // again and again until user enable bluetooth
+            promptEnableBluetooth()
+        }
+    }
 
+    inner class BluetoothServiceLeConn : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            mBluetoothLeService = (service as BluetoothLeService.InnerBinder).getService()
+        }
 
-    private val keyStoreUtils: KeyStoreUtils = KeyStoreUtils.getInstance()
-    private lateinit var x963FormatPublicKey: ByteArray
+        override fun onServiceDisconnected(name: ComponentName?) {
+            mBluetoothLeService = null
+        }
+    }
 
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    // -------------------------------------------------------------------------------------------
+
+    private lateinit var rootView: ActivityMain2Binding
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        rootView = ActivityMainBinding.inflate(layoutInflater)
+        rootView = ActivityMain2Binding.inflate(layoutInflater)
         setContentView(rootView.root)
 
-        initBluetooth()
-        initKeystore()
-
-        rootView.btnConnectToVehicle.setOnClickListener {
-            connectVehicle()
+        // scan and connect to vehicle
+        rootView.btnTest1.setOnClickListener {
+            if (!hasRequiredBluetoothPermissions()) {
+                requestRelevantRuntimePermissions()
+            } else {
+                mBluetoothLeService?.startBleScan()
+            }
         }
 
-        rootView.btnAddkeyToWhitelist.setOnClickListener {
-            addKey()
+        // add key to white list
+        rootView.btnTest2.setOnClickListener {
+            mBluetoothLeService?.addKey()
         }
 
-        rootView.btnRequestEphemeralKey.setOnClickListener {
-            requestEphemeralKey()
+        // request ephemeral key
+        rootView.btnTest3.setOnClickListener {
+            mBluetoothLeService?.requestEphemeralKey()
         }
 
-        rootView.btnAuth.setOnClickListener {
-            authenticate()
+        // authenticate
+        rootView.btnTest4.setOnClickListener {
+            mBluetoothLeService?.authenticate()
         }
 
         // real control
-        rootView.btnOpenPassengerDoor.setOnClickListener {
-            openPassengerDoor()
+        rootView.btnTest5.setOnClickListener {
+            mBluetoothLeService?.openPassengerDoor()
         }
     }
 
-    private fun initBluetooth() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+    override fun onResume() {
+        super.onResume()
 
-        bluetoothLeScanner = BluetoothUtil.checkSupport(this)
-
-        gattCallback = GattCallback(
-            this@MainActivity,
-            object : ConnectCallback() {
-                override fun onGetCharacteristics(
-                    characteristicTx: BluetoothGattCharacteristic,
-                    characteristicRx: BluetoothGattCharacteristic
-                ) {
-                    this@MainActivity.characteristicTx = characteristicTx
-                    this@MainActivity.characteristicRx = characteristicRx
-                }
-
-                // CORE - CORE - CORE
-                override fun onResponseFromVehicle(data: ByteArray) {
-
-                    // 细节处理 ....
-                    // 不断拼接报文 如果未完成则返回为空
-                    // 拼接报文完成 直接返回全部报文
-                    val fromVCSECMessage: FromVCSECMessage? = MessageUtil.autoChaCha(data)
-                    Log.d(TAG, "onResponseFromVehicle: hahahha + $fromVCSECMessage")
-
-                    fromVCSECMessage?.let {
-
-                        when (operations) {
-                            Operations.KEY_TO_WHITELIST_ADDING -> {
-                                val ret = AddKeyVehicleResponse().perform(it, keyStoreUtils.keyId)
-                                Log.d(TAG, "onAddKeyResponseFromVehicle: $ret")
-                            }
-
-                            Operations.EPHEMERAL_KEY_REQUESTING -> {
-                                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S)
-                                    return
-
-                                EphemeralKeyVehicleResponse().perform(this@MainActivity, it)
-                            }
-
-                            else -> {
-
-                            }
-                        }
-
-
-                    }
-                }
-            }
+        bindService(
+            Intent(this@MainActivity, BluetoothLeService::class.java),
+            BluetoothServiceLeConn(),
+            Context.BIND_AUTO_CREATE
         )
 
-        scannerCallback = ScannerCallback(
-            this,
-            bluetoothLeScanner,
-            gattCallback,
-            object : ConnectCallback() {
-                override fun onConnected(bluetoothGatt: BluetoothGatt) {
-                    Log.d(TAG, "onConnected: 连接成功")
-
-                    this@MainActivity.bluetoothGatt = bluetoothGatt
-                }
-            }
-        )
-
-        if (!BluetoothUtil.isPermissionsGranted(this)) requestPermissions(
-            BluetoothUtil.permissions.toTypedArray(), PERMISSION_REQUEST_CODE
-        )
+        if (mBluetoothLeService?.isBluetoothEnable() != true) promptEnableBluetooth()
     }
 
-    private fun initKeystore() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S)
-            return
+    // -------------------------------------------------------------------------------------------
+    private fun Activity.requestRelevantRuntimePermissions() {
+        if (hasRequiredBluetoothPermissions()) return
 
-        x963FormatPublicKey = keyStoreUtils.getKeyPair(this)
-        Log.d(TAG, "initKeystore: x963FormatPublicKey=${JUtils.bytesToHex(x963FormatPublicKey)}")
-    }
-
-    // step1
-    private fun connectVehicle() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S)
-            return
-
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN)
-            != PackageManager.PERMISSION_GRANTED
-        )
-            return
-
-        Thread {
-            bluetoothLeScanner.startScan(scannerCallback)
-        }.start()
-    }
-
-    // step2
-    private fun addKey() {
-        if (x963FormatPublicKey.isEmpty())
-            return
-
-        operations = Operations.KEY_TO_WHITELIST_ADDING
-
-        val requestMsg = AddKeyToWhiteListRequest().perform(x963FormatPublicKey)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
-                != PackageManager.PERMISSION_GRANTED
-            ) return
-
-            Thread {
-                // send msg to vehicle
-
-                bluetoothGatt.writeCharacteristic(
-                    characteristicTx,
-                    requestMsg,
-                    BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT,
-                )
-
-            }.start()
+        when {
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.S -> requestLocationPermission()
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> requestBluetoothPermissions()
         }
     }
 
-    // step3
-    private fun requestEphemeralKey() {
-        operations = Operations.EPHEMERAL_KEY_REQUESTING
+    private fun requestLocationPermission() = runOnUiThread {
+        mPromptDialog.show(
+            "Location permission required",
+            "Starting from Android M (6.0), the system requires apps to be granted " + "location access in order to scan for BLE devices."
+        ) { _, _ ->
 
-        val requestMsg = EphemeralKeyRequest().perform(keyStoreUtils.keyId)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
-                != PackageManager.PERMISSION_GRANTED) return
-
-            Thread {
-                // send msg to vehicle
-
-                bluetoothGatt.writeCharacteristic(
-                    characteristicTx,
-                    requestMsg,
-                    BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT,
-                )
-
-            }.start()
+            ActivityCompat.requestPermissions(
+                this, arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ), PERMISSION_REQUEST_CODE
+            )
         }
     }
 
-    // step 4
-    private fun authenticate() {
-        operations = Operations.AUTHENTICATING
+    @RequiresApi(Build.VERSION_CODES.S)
+    private fun requestBluetoothPermissions() = runOnUiThread {
+        mPromptDialog.show(
+            "Bluetooth permission required",
+            "Starting from Android 12, the system requires apps to be granted " + "Bluetooth access in order to scan for and connect to BLE devices."
+        ) { _, _ ->
 
-        // val counter = 23; // sharedPreference ... maintain ....
-        // val counter = 24; // sharedPreference ... maintain ....
-        val counter = 30; // sharedPreference ... maintain .... 25号用过了
-
-        // val sharedKey: ByteArray = Utils.hexToBytes("169F508FCCAB72B3DEE2A30B4BFD6598")
-        val sharedKey: ByteArray = keyStoreUtils.sharedKey
-
-        val requestMsg = AuthRequest().perform(this, sharedKey, counter)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ActivityCompat.checkSelfPermission(
-                    this, Manifest.permission.BLUETOOTH_CONNECT
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                return
-            }
-
-            Thread {
-                // send msg to vehicle
-
-                bluetoothGatt.writeCharacteristic(
-                    characteristicTx,
-                    requestMsg,
-                    BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT,
-                )
-
-            }.start()
+            ActivityCompat.requestPermissions(
+                this, arrayOf(
+                    Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT
+                ), PERMISSION_REQUEST_CODE
+            )
         }
     }
 
-    // step 5 real control
-    private fun openPassengerDoor() {
-        operations = Operations.CLOSURES_REQUESTING
-
-        // val counter = 23; // sharedPreference ... maintain ....
-        // val counter = 24; // sharedPreference ... maintain ....
-        // val counter = 25; // sharedPreference ... maintain .... 25号用过了
-        val counter = 31; // sharedPreference ... maintain ....
-
-        // val sharedKey: ByteArray = Utils.hexToBytes("169F508FCCAB72B3DEE2A30B4BFD6598")
-        val sharedKey: ByteArray = keyStoreUtils.sharedKey
-
-        val requestMsg = ClosuresRequest().perform(this, sharedKey, counter)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ActivityCompat.checkSelfPermission(
-                    this, Manifest.permission.BLUETOOTH_CONNECT
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                return
-            }
-
-            Thread {
-                // send msg to vehicle
-
-                bluetoothGatt.writeCharacteristic(
-                    characteristicTx,
-                    requestMsg,
-                    BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT,
-                )
-
-            }.start()
-        }
-    }
-
-
-    // ..........
     override fun onRequestPermissionsResult(
         requestCode: Int, permissions: Array<out String>, grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
-        if (requestCode == PERMISSION_REQUEST_CODE) {
+        if (requestCode != PERMISSION_REQUEST_CODE) return
+        val containsPermanentDenial = permissions.zip(grantResults.toTypedArray()).any {
+            it.second == PackageManager.PERMISSION_DENIED && !ActivityCompat.shouldShowRequestPermissionRationale(
+                this, it.first
+            )
+        }
 
-            Log.d(TAG, "onRequestPermissionsResult: grantResults = " + grantResults.size)
+        val containsDenial = grantResults.any {
+            it == PackageManager.PERMISSION_DENIED
+        }
 
-            var granted = true
-            grantResults.forEach {
-                granted = (it == 0)
+        val allGranted = grantResults.all {
+            it == PackageManager.PERMISSION_GRANTED
+        }
+
+        when {
+            containsPermanentDenial -> {
+                // TODO: Handle permanent denial (e.g., show AlertDialog with justification)
+                // Note: The user will need to navigate to App Settings and manually grant
+                // permissions that were permanently denied
             }
 
-            if (!granted) finish()
-        }
+            containsDenial -> {
+                requestRelevantRuntimePermissions()
+            }
 
+            allGranted && hasRequiredBluetoothPermissions() -> {
+                // todo core method ...
+                mBluetoothLeService?.startBleScan()
+            }
+
+            else -> {
+                // Unexpected scenario encountered when handling permissions
+                recreate()
+            }
+        }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-
-        if (ActivityCompat.checkSelfPermission(
-                this, Manifest.permission.BLUETOOTH_CONNECT
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
+    /**
+     * Prompts the user to enable Bluetooth via a system dialog.
+     *
+     * For Android 12+, [Manifest.permission.BLUETOOTH_CONNECT] is required to use
+     * the [BluetoothAdapter.ACTION_REQUEST_ENABLE] intent.
+     */
+    private fun promptEnableBluetooth() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) {
+            // Insufficient permission to prompt for Bluetooth enabling
+            Log.d(TAG, "Insufficient permission to prompt for Bluetooth enabling")
             return
         }
-        bluetoothGatt.disconnect()
+
+        if (mBluetoothLeService?.isBluetoothEnable() != true) {
+            Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE).apply {
+                mBluetoothEnablingResult.launch(this)
+            }
+        }
     }
 
+    companion object {
+        private const val TAG = "MainActivity"
+        private const val PERMISSION_REQUEST_CODE = 100
+    }
 }

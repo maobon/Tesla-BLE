@@ -4,12 +4,44 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".MainActivity2">
+    tools:context=".MainActivity">
 
     <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/btn_test"
+        android:id="@+id/btn_test_1"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:text="Hello World!" />
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/btn_test_2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/btn_test_1"
+        android:layout_centerInParent="true"
+        android:text="Hello World!" />
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/btn_test_3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/btn_test_2"
+        android:layout_centerInParent="true"
+        android:text="Hello World!" />
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/btn_test_4"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/btn_test_3"
+        android:layout_centerInParent="true"
+        android:text="Hello World!" />
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/btn_test_5"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/btn_test_4"
         android:layout_centerInParent="true"
         android:text="Hello World!" />
 

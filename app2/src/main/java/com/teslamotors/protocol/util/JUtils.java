@@ -4,10 +4,6 @@ public class JUtils {
 
     /**
      * 带符号的 byte
-     *
-     * @param value
-     * @return
-     * @throws UtilityException
      */
     public static byte[] integerToTwoBytes(int value) throws UtilityException {
         byte[] result = new byte[2];
@@ -32,7 +28,6 @@ public class JUtils {
         return ((bytes[0] & 0xff) << 8) | (bytes[1] & 0xff);
     }
 
-
     private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
 
     public static String bytesToHex(byte[] bytes) {
@@ -56,20 +51,5 @@ public class JUtils {
         }
         return b;
     }
-
-    //    private fun haha() {
-//
-//        val vin = "LRW3E7FA0MC171694"
-//        val bytes = vin.toByteArray(StandardCharsets.UTF_8)
-//
-//        val md = MessageDigest.getInstance("SHA1")
-//        val hash = md.digest(bytes)
-//
-//        val hex = Utils.bytesToHex(hash)
-//        val bleName = hex.substring(0, 16)
-//        Log.d(TAG, "haha: $bleName")
-//    }
-
-
 }
 

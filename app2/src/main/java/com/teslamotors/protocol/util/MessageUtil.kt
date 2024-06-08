@@ -85,7 +85,7 @@ object MessageUtil {
         baos.write(dataSlice)
     }
 
-    fun getRealDataLength(bytes: ByteArray): Int {
+    private fun getRealDataLength(bytes: ByteArray): Int {
         val b = ByteArray(2)
         System.arraycopy(bytes, 0, b, 0, 2)
         val length = JUtils.read2BytesToInt(b)

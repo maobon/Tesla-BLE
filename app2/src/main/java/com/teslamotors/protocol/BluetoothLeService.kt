@@ -34,6 +34,7 @@ import com.teslamotors.protocol.util.Operations.KEY_TO_WHITELIST_ADDING
 import com.teslamotors.protocol.util.TESLA_BLUETOOTH_NAME
 import com.teslamotors.protocol.util.TESLA_RX_CHARACTERISTIC_DESCRIPTOR_UUID
 import com.teslamotors.protocol.util.countAutoIncrement
+import com.teslamotors.protocol.util.createToast
 
 class BluetoothLeService : Service() {
 
@@ -146,7 +147,7 @@ class BluetoothLeService : Service() {
         }
 
         override fun onScanFailed(errorCode: Int) {
-
+            mScanning = false
         }
     }
 

@@ -1,4 +1,4 @@
-package com.teslamotors.protocol.ble2
+package com.teslamotors.protocol.ble
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothGatt

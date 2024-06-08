@@ -17,8 +17,8 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.annotation.RequiresApi
-import com.teslamotors.protocol.ble2.BluetoothLeUtil
-import com.teslamotors.protocol.ble2.GattCallback
+import com.teslamotors.protocol.ble.BluetoothLeUtil
+import com.teslamotors.protocol.ble.GattCallback
 import com.teslamotors.protocol.keystore.KeyStoreUtils
 import com.teslamotors.protocol.msg.action.AuthRequest
 import com.teslamotors.protocol.msg.action.ClosuresRequest

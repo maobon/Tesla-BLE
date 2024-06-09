@@ -1,23 +1,25 @@
 package com.teslamotors.protocol
 
 import android.app.Service
-import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
-import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
-import android.content.Context
 import android.content.Intent
-import android.os.Binder
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.os.Message
+import android.os.Messenger
 import android.util.Log
 import androidx.annotation.RequiresApi
-import com.teslamotors.protocol.ble.BluetoothLeUtil
+import com.teslamotors.protocol.ble.GattUtil
+import com.teslamotors.protocol.ble.BluetoothUtil
+import com.teslamotors.protocol.ble.ConnectionStateListener
 import com.teslamotors.protocol.ble.GattCallback
 import com.teslamotors.protocol.keystore.KeyStoreUtils
 import com.teslamotors.protocol.msg.action.AuthRequest
@@ -26,6 +28,12 @@ import com.teslamotors.protocol.msg.key.AddKeyToWhiteListRequest
 import com.teslamotors.protocol.msg.key.AddKeyVehicleResponse
 import com.teslamotors.protocol.msg.key.EphemeralKeyRequest
 import com.teslamotors.protocol.msg.key.EphemeralKeyVehicleResponse
+import com.teslamotors.protocol.util.ACTION_AUTHENTICATING
+import com.teslamotors.protocol.util.ACTION_CLIENT_MESSENGER
+import com.teslamotors.protocol.util.ACTION_CLOSURES_REQUESTING
+import com.teslamotors.protocol.util.ACTION_CONNECTING
+import com.teslamotors.protocol.util.ACTION_EPHEMERAL_KEY_REQUESTING
+import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING
 import com.teslamotors.protocol.util.JUtils
 import com.teslamotors.protocol.util.Operations.AUTHENTICATING
 import com.teslamotors.protocol.util.Operations.CLOSURES_REQUESTING
@@ -34,33 +42,31 @@ import com.teslamotors.protocol.util.Operations.KEY_TO_WHITELIST_ADDING
 import com.teslamotors.protocol.util.TESLA_BLUETOOTH_NAME
 import com.teslamotors.protocol.util.TESLA_RX_CHARACTERISTIC_DESCRIPTOR_UUID
 import com.teslamotors.protocol.util.countAutoIncrement
-import com.teslamotors.protocol.util.createToast
 
+@Suppress("all")
 class BluetoothLeService : Service() {
 
     private var mScanning = false
 
     // real control instance
-    lateinit var bluetoothLeUtil: BluetoothLeUtil
-    lateinit var txCharacteristic: BluetoothGattCharacteristic
-    lateinit var rxCharacteristic: BluetoothGattCharacteristic
+    private lateinit var mGatt: GattUtil
+    private val mBluetoothUtil = BluetoothUtil(this@BluetoothLeService)
+
+    private lateinit var txCharacteristic: BluetoothGattCharacteristic
+    private lateinit var rxCharacteristic: BluetoothGattCharacteristic
 
     // bluetooth gatt callback result: onConnectionStateChange ...
     private lateinit var mGattCallback: GattCallback
 
-    private val mBluetoothAdapter: BluetoothAdapter by lazy {
-        val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-        bluetoothManager.adapter
-    }
-
-    private val mBleScanner by lazy {
-        mBluetoothAdapter.bluetoothLeScanner
-    }
-
     private val keyStoreUtils: KeyStoreUtils = KeyStoreUtils.getInstance()
     private lateinit var x963FormatPublicKey: ByteArray
 
-    // -----------------------------------------
+    private lateinit var cMessenger: Messenger
+
+    private val mServiceHandler by lazy {
+        ServiceHandler(this@BluetoothLeService)
+    }
+
 
     @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate() {
@@ -68,12 +74,12 @@ class BluetoothLeService : Service() {
 
         initKeystore()
 
-        mGattCallback = GattCallback(object : GattCallback.ConnectionStateListener {
+        mGattCallback = GattCallback(object : ConnectionStateListener {
             override fun onConnected(gatt: BluetoothGatt) {
-                bluetoothLeUtil = BluetoothLeUtil(gatt)
+                mGatt = GattUtil(gatt)
 
                 // auto next step discovery services
-                bluetoothLeUtil.discoveryServices()
+                mGatt.discoveryServices()
             }
 
             override fun onGetCharacteristics(
@@ -82,12 +88,13 @@ class BluetoothLeService : Service() {
             ) {
                 txCharacteristic = tx
                 rxCharacteristic = rx
+
                 // enable notification
-                bluetoothLeUtil.enableNotifications(rx, TESLA_RX_CHARACTERISTIC_DESCRIPTOR_UUID)
+                mGatt.enableNotifications(rx, TESLA_RX_CHARACTERISTIC_DESCRIPTOR_UUID)
             }
 
             override fun onVehicleResponse(message: vcsec.FromVCSECMessage?) {
-                when (bluetoothLeUtil.opera) {
+                when (mGatt.opera) {
                     KEY_TO_WHITELIST_ADDING -> {
                         val ret = with(message!!) {
                             AddKeyVehicleResponse().perform(this, keyStoreUtils.keyId)
@@ -131,19 +138,15 @@ class BluetoothLeService : Service() {
     @Suppress("all")
     private val mScanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
-            if (mScanning) stopBleScan()
+            val device = result.device
+            Log.d(TAG, "connecting!!! ---> : ${device.name} + ${device.address}")
 
-            result.device.apply {
-                Log.d(TAG, "connecting!!! ---> : ${this.name} + ${this.address}")
-
-                // connect to vehicle .....
-                connectGatt(
-                    this@BluetoothLeService,
-                    false,
-                    mGattCallback,
-                    BluetoothDevice.TRANSPORT_LE
-                )
+            if (mScanning) {
+                stopBleScan()
             }
+
+            // todo ... core connect to the target ...
+            connectTargetDevice(device)
         }
 
         override fun onScanFailed(errorCode: Int) {
@@ -151,19 +154,39 @@ class BluetoothLeService : Service() {
         }
     }
 
-    inner class InnerBinder : Binder() {
-        fun getService() = this@BluetoothLeService
+    private fun connectTargetDevice(bluetoothDevice: BluetoothDevice) {
+        bluetoothDevice.connectGatt(
+            this, false, mGattCallback, BluetoothDevice.TRANSPORT_LE
+        )
+    }
+
+    internal class ServiceHandler(
+        private val service: BluetoothLeService
+    ) : Handler(Looper.getMainLooper()) {
+        override fun handleMessage(msg: Message) {
+            when (msg.what) {
+                ACTION_CLIENT_MESSENGER -> {
+                    service.cMessenger = msg.replyTo
+                }
+
+                ACTION_CONNECTING -> service.startBleScan()
+                ACTION_KEY_TO_WHITELIST_ADDING -> service.addKey()
+                ACTION_EPHEMERAL_KEY_REQUESTING -> service.requestEphemeralKey()
+                ACTION_AUTHENTICATING -> service.authenticate()
+                ACTION_CLOSURES_REQUESTING -> service.openPassengerDoor()
+            }
+        }
     }
 
     override fun onBind(intent: Intent): IBinder {
-        return InnerBinder()
+        return Messenger(mServiceHandler).binder
     }
 
-    fun isBluetoothEnable() = mBluetoothAdapter.isEnabled
-
-    @Suppress("all")
-    fun startBleScan() {
-        if (mScanning) stopBleScan() else {
+    // step1 ....................
+    private fun startBleScan() {
+        if (mScanning) {
+            stopBleScan()
+        } else {
             mScanning = true
 
             val scanFilter = ScanFilter.Builder()
@@ -177,26 +200,24 @@ class BluetoothLeService : Service() {
             val filters = mutableListOf<ScanFilter>().apply {
                 add(scanFilter)
             }
-
-            mBleScanner.startScan(filters, scanSettings, mScanCallback)
+            mBluetoothUtil.mScanner.startScan(filters, scanSettings, mScanCallback)
         }
     }
 
-    @Suppress("all")
-    fun stopBleScan() {
-        mBleScanner.stopScan(mScanCallback)
+    private fun stopBleScan() {
         mScanning = false
+        mBluetoothUtil.mScanner.stopScan(mScanCallback)
     }
 
     // step2 ....................
-    fun addKey() {
+    private fun addKey() {
         if (x963FormatPublicKey.isEmpty()) {
             Log.e(TAG, "addKey: x963FormatPublicKey is null")
             return
         }
 
         val requestMsg = AddKeyToWhiteListRequest().perform(x963FormatPublicKey)
-        bluetoothLeUtil.writeCharacteristic(
+        mGatt.writeCharacteristic(
             txCharacteristic,
             requestMsg,
             KEY_TO_WHITELIST_ADDING
@@ -204,27 +225,26 @@ class BluetoothLeService : Service() {
     }
 
     // step3 ....................
-    fun requestEphemeralKey() {
+    private fun requestEphemeralKey() {
         val requestMsg = EphemeralKeyRequest().perform(keyStoreUtils.keyId)
-        bluetoothLeUtil.writeCharacteristic(txCharacteristic, requestMsg, EPHEMERAL_KEY_REQUESTING)
+        mGatt.writeCharacteristic(txCharacteristic, requestMsg, EPHEMERAL_KEY_REQUESTING)
     }
 
     // step 4 ...............................
-    fun authenticate() {
+    private fun authenticate() {
         val sharedKey: ByteArray = keyStoreUtils.sharedKey
         val requestMsg = AuthRequest().perform(this, sharedKey, countAutoIncrement())
-        bluetoothLeUtil.writeCharacteristic(txCharacteristic, requestMsg, AUTHENTICATING)
+        mGatt.writeCharacteristic(txCharacteristic, requestMsg, AUTHENTICATING)
     }
 
     // real control
-    fun openPassengerDoor() {
+    private fun openPassengerDoor() {
         val sharedKey: ByteArray = keyStoreUtils.sharedKey
         val requestMsg = ClosuresRequest().perform(this, sharedKey, countAutoIncrement())
-        bluetoothLeUtil.writeCharacteristic(txCharacteristic, requestMsg, CLOSURES_REQUESTING)
+        mGatt.writeCharacteristic(txCharacteristic, requestMsg, CLOSURES_REQUESTING)
     }
 
-    companion object {
+    private companion object {
         private const val TAG = "BluetoothLeService"
     }
-
 }

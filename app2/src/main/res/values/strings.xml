@@ -1,3 +1,14 @@
 <resources>
-    <string name="app_name">My Application</string>
+    <string name="app_name">Tesla</string>
+
+    <string name="title_location">Location permission required</string>
+    <string name="prompt_content_location">
+        Starting from Android M (6.0), the system requires apps to be granted location access in order to scan for BLE devices.
+    </string>
+
+    <string name="title_bluetooth">Bluetooth permission required</string>
+    <string name="prompt_content_bluetooth">
+        Starting from Android 12, the system requires apps to be granted Bluetooth access in order to scan for and connect to BLE devices.
+    </string>
+
 </resources>

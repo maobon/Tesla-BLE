@@ -14,19 +14,11 @@ import com.teslamotors.protocol.util.printGattTable
 import com.teslamotors.protocol.util.toHexString
 import com.teslamotors.protocol.vcsec
 
+@SuppressLint("MissingPermission")
 class GattCallback(
     private val mStatusListener: ConnectionStateListener
 ) : BluetoothGattCallback() {
 
-    interface ConnectionStateListener {
-        fun onConnected(gatt: BluetoothGatt)
-
-        fun onGetCharacteristics(tx: BluetoothGattCharacteristic, rx: BluetoothGattCharacteristic)
-
-        fun onVehicleResponse(message: vcsec.FromVCSECMessage?)
-    }
-
-    @SuppressLint("MissingPermission")
     override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
         val deviceAddress = gatt.device.address
 
@@ -36,7 +28,6 @@ class GattCallback(
 
                 // stash BluetoothGatt instance ...
                 // mBluetoothGatt = gatt
-
                 mStatusListener.onConnected(gatt)
 
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {

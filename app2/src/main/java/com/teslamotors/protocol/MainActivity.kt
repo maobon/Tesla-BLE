@@ -10,82 +10,125 @@ import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.os.Message
+import android.os.Messenger
 import android.util.Log
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import com.teslamotors.protocol.ble.BluetoothUtil
 import com.teslamotors.protocol.databinding.ActivityMainBinding
 import com.teslamotors.protocol.ui.DialogUtil
+import com.teslamotors.protocol.ui.DialogUtil.PERMISSION_REQUEST_CODE
+import com.teslamotors.protocol.util.ACTION_AUTHENTICATING
+import com.teslamotors.protocol.util.ACTION_AUTHENTICATING_RESP
+import com.teslamotors.protocol.util.ACTION_CLIENT_MESSENGER
+import com.teslamotors.protocol.util.ACTION_CLOSURES_REQUESTING
+import com.teslamotors.protocol.util.ACTION_CLOSURES_REQUESTING_RESP
+import com.teslamotors.protocol.util.ACTION_CONNECTING
+import com.teslamotors.protocol.util.ACTION_CONNECTING_RESP
+import com.teslamotors.protocol.util.ACTION_EPHEMERAL_KEY_REQUESTING
+import com.teslamotors.protocol.util.ACTION_EPHEMERAL_KEY_REQUESTING_RESP
+import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING
+import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING_RESP
 import com.teslamotors.protocol.util.hasPermission
 import com.teslamotors.protocol.util.hasRequiredBluetoothPermissions
+import com.teslamotors.protocol.util.requestRelevantRuntimePermissions
 
 class MainActivity : AppCompatActivity() {
 
-    private val mPromptDialog: DialogUtil by lazy {
-        DialogUtil(this@MainActivity)
+    private lateinit var rootView: ActivityMainBinding
+    private lateinit var mBluetoothUtil: BluetoothUtil
+
+    private var sMessenger: Messenger? = null
+    private val mClientHandler by lazy {
+        ClientHandler(this@MainActivity)
     }
 
-    private var mBluetoothLeService: BluetoothLeService? = null
-
-    private val mBluetoothEnablingResult = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) {
-        if (it.resultCode == Activity.RESULT_OK) {
-            mBluetoothLeService?.startBleScan()
-        } else {
-            promptEnableBluetooth()
-        }
-    }
+    private var mServiceConnImpl: ServiceConnection = BluetoothServiceLeConn()
 
     inner class BluetoothServiceLeConn : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            mBluetoothLeService = (service as BluetoothLeService.InnerBinder).getService()
+            sMessenger = Messenger(service)
+
+            Message.obtain().apply {
+                what = ACTION_CLIENT_MESSENGER
+                replyTo = Messenger(mClientHandler)
+                sMessenger!!.send(this)
+            }
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
-            mBluetoothLeService = null
+            sMessenger = null
         }
     }
 
-    // -------------------------------------------------------------------------------------------
+    internal class ClientHandler(
+        private val activity: MainActivity
+    ) : Handler(Looper.getMainLooper()) {
+        override fun handleMessage(msg: Message) {
+            when (msg.what) {
+                ACTION_CONNECTING_RESP -> {
 
-    private lateinit var rootView: ActivityMainBinding
+                }
+                ACTION_KEY_TO_WHITELIST_ADDING_RESP -> {
 
+                }
+                ACTION_EPHEMERAL_KEY_REQUESTING_RESP -> {
+
+                }
+                ACTION_AUTHENTICATING_RESP -> {
+
+                }
+                ACTION_CLOSURES_REQUESTING_RESP -> {
+
+                }
+            }
+        }
+    }
+
+
+    @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         rootView = ActivityMainBinding.inflate(layoutInflater)
         setContentView(rootView.root)
+
+        mBluetoothUtil = BluetoothUtil(this@MainActivity)
 
         // scan and connect to vehicle
         rootView.btnTest1.setOnClickListener {
             if (!hasRequiredBluetoothPermissions()) {
-                requestRelevantRuntimePermissions()
+                requestRelevantRuntimePermissions(
+                    ::requestLocationPermission, ::requestBluetoothPermissions
+                )
             } else {
-                mBluetoothLeService?.startBleScan()
+                perform(ACTION_CONNECTING)
             }
         }
 
         // add key to white list
         rootView.btnTest2.setOnClickListener {
-            mBluetoothLeService?.addKey()
+            perform(ACTION_KEY_TO_WHITELIST_ADDING)
         }
 
         // request ephemeral key
         rootView.btnTest3.setOnClickListener {
-            mBluetoothLeService?.requestEphemeralKey()
+            perform(ACTION_EPHEMERAL_KEY_REQUESTING)
         }
 
         // authenticate
         rootView.btnTest4.setOnClickListener {
-            mBluetoothLeService?.authenticate()
+            perform(ACTION_AUTHENTICATING)
         }
 
         // real control
         rootView.btnTest5.setOnClickListener {
-            mBluetoothLeService?.openPassengerDoor()
+            perform(ACTION_CLOSURES_REQUESTING)
         }
     }
 
@@ -94,52 +137,16 @@ class MainActivity : AppCompatActivity() {
 
         bindService(
             Intent(this@MainActivity, BluetoothLeService::class.java),
-            BluetoothServiceLeConn(),
+            mServiceConnImpl,
             Context.BIND_AUTO_CREATE
         )
 
-        if (mBluetoothLeService?.isBluetoothEnable() != true) promptEnableBluetooth()
-    }
-
-    // -------------------------------------------------------------------------------------------
-    private fun Activity.requestRelevantRuntimePermissions() {
-        if (hasRequiredBluetoothPermissions()) return
-
-        when {
-            Build.VERSION.SDK_INT < Build.VERSION_CODES.S -> requestLocationPermission()
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> requestBluetoothPermissions()
-        }
-    }
-
-    private fun requestLocationPermission() = runOnUiThread {
-        mPromptDialog.show(
-            "Location permission required",
-            "Starting from Android M (6.0), the system requires apps to be granted " + "location access in order to scan for BLE devices."
-        ) { _, _ ->
-
-            ActivityCompat.requestPermissions(
-                this, arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                ), PERMISSION_REQUEST_CODE
-            )
+        if (!mBluetoothUtil.isBluetoothEnable()) {
+            promptEnableBluetooth()
         }
     }
 
     @RequiresApi(Build.VERSION_CODES.S)
-    private fun requestBluetoothPermissions() = runOnUiThread {
-        mPromptDialog.show(
-            "Bluetooth permission required",
-            "Starting from Android 12, the system requires apps to be granted " + "Bluetooth access in order to scan for and connect to BLE devices."
-        ) { _, _ ->
-
-            ActivityCompat.requestPermissions(
-                this, arrayOf(
-                    Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT
-                ), PERMISSION_REQUEST_CODE
-            )
-        }
-    }
-
     override fun onRequestPermissionsResult(
         requestCode: Int, permissions: Array<out String>, grantResults: IntArray
     ) {
@@ -168,17 +175,19 @@ class MainActivity : AppCompatActivity() {
             }
 
             containsDenial -> {
-                requestRelevantRuntimePermissions()
+                requestRelevantRuntimePermissions(
+                    ::requestLocationPermission, ::requestBluetoothPermissions
+                )
             }
 
             allGranted && hasRequiredBluetoothPermissions() -> {
                 // todo core method ...
-                mBluetoothLeService?.startBleScan()
+                perform(ACTION_CONNECTING)
             }
 
             else -> {
                 // Unexpected scenario encountered when handling permissions
-                recreate()
+                // recreate()
             }
         }
     }
@@ -196,15 +205,47 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        if (mBluetoothLeService?.isBluetoothEnable() != true) {
+        if (!mBluetoothUtil.isBluetoothEnable()) {
             Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE).apply {
                 mBluetoothEnablingResult.launch(this)
             }
         }
     }
 
-    companion object {
+    private val mBluetoothEnablingResult = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (it.resultCode == Activity.RESULT_OK) {
+            // mBluetoothLeService?.startBleScan()
+            perform(ACTION_CONNECTING)
+        } else {
+            promptEnableBluetooth()
+        }
+    }
+
+    private fun perform(action: Int) {
+        Message.obtain().apply {
+            what = action
+            sMessenger!!.send(this)
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.S)
+    private fun requestLocationPermission() {
+        DialogUtil.showReqPermissions(DialogUtil.PermissionType.Location, this)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.S)
+    private fun requestBluetoothPermissions() {
+        DialogUtil.showReqPermissions(DialogUtil.PermissionType.Bluetooth, this)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unbindService(mServiceConnImpl)
+    }
+
+    private companion object {
         private const val TAG = "MainActivity"
-        private const val PERMISSION_REQUEST_CODE = 100
     }
 }

@@ -17,7 +17,7 @@ import com.teslamotors.protocol.util.isWritableWithoutResponse
 import java.util.*
 
 @SuppressLint("MissingPermission")
-class BluetoothLeUtil(
+class GattUtil(
     private val bluetoothGatt: BluetoothGatt?
 ) {
 

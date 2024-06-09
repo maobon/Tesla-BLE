@@ -34,15 +34,20 @@ public class KeyStoreUtils {
 
     private static final String TAG = "KeystoreUtils";
 
-    private final static KeyStoreUtils S_KEY_STORE_UTILS = new KeyStoreUtils();
-    public byte[] x963PublicKey;
-    public byte[] sharedKey;
+    private byte[] x963PublicKey;
+    private byte[] sharedKey;
+
+    private final static KeyStoreUtils sKeystoreUtils = new KeyStoreUtils();
+
+    public static KeyStoreUtils getInstance() {
+        return sKeystoreUtils;
+    }
 
     private KeyStoreUtils() {
     }
 
-    public static KeyStoreUtils getInstance() {
-        return S_KEY_STORE_UTILS;
+    public byte[] getSharedKey() {
+        return sharedKey;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.S)
@@ -70,7 +75,7 @@ public class KeyStoreUtils {
         byte[] pub = toUncompressedPoint((ECPublicKey) publicKey);
         // byte[] pri = privateKey.getEncoded(); 安全风险 禁止导出
 
-        this.x963PublicKey = pub;
+        x963PublicKey = pub;
         return pub;
     }
 
@@ -160,7 +165,7 @@ public class KeyStoreUtils {
         if (x963PublicKey == null) throw new RuntimeException("x963PublicKey variable is null");
 
         MessageDigest messageDigest = MessageDigest.getInstance("SHA1");
-        byte[] digest = messageDigest.digest(this.x963PublicKey);
+        byte[] digest = messageDigest.digest(x963PublicKey);
 
         byte[] res = new byte[4];
         System.arraycopy(digest, 0, res, 0, 4);

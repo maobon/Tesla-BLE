@@ -7,6 +7,8 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Message
+import android.os.Messenger
 import android.util.Log
 import android.widget.Toast
 import androidx.core.content.ContextCompat
@@ -119,4 +121,19 @@ fun Context.requestRelevantRuntimePermissions(belowS: () -> Unit, aboveS: () -> 
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> aboveS()
     }
 }
+
+//
+private const val TAG = "Utils"
+
+fun Context.sendMessage(messenger: Messenger?, action:Int){
+    if(messenger == null){
+        Log.d(TAG, "sendMessage: messenger is null")
+        return
+    }
+    Message.obtain().apply {
+        what = action
+        messenger.send(this)
+    }
+}
+
 

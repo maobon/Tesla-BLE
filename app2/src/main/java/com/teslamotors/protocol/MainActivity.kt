@@ -38,6 +38,7 @@ import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING_RESP
 import com.teslamotors.protocol.util.hasPermission
 import com.teslamotors.protocol.util.hasRequiredBluetoothPermissions
 import com.teslamotors.protocol.util.requestRelevantRuntimePermissions
+import com.teslamotors.protocol.util.sendMessage
 
 class MainActivity : AppCompatActivity() {
 
@@ -73,6 +74,11 @@ class MainActivity : AppCompatActivity() {
         override fun handleMessage(msg: Message) {
             when (msg.what) {
                 ACTION_CONNECTING_RESP -> {
+                    Log.d(TAG, "handleMessage: ACTION_CONNECTING_RESP ...")
+                    // 1. scan and connect result
+
+                    // 2. release button status
+                    activity.rootView.btnTest1.isEnabled = true
 
                 }
                 ACTION_KEY_TO_WHITELIST_ADDING_RESP -> {
@@ -107,28 +113,31 @@ class MainActivity : AppCompatActivity() {
                     ::requestLocationPermission, ::requestBluetoothPermissions
                 )
             } else {
-                perform(ACTION_CONNECTING)
+                it.isEnabled = false
+                sendMessage(sMessenger,ACTION_CONNECTING)
             }
         }
 
+        // ---------------------------------
         // add key to white list
         rootView.btnTest2.setOnClickListener {
-            perform(ACTION_KEY_TO_WHITELIST_ADDING)
+            sendMessage(sMessenger,ACTION_KEY_TO_WHITELIST_ADDING)
         }
 
         // request ephemeral key
         rootView.btnTest3.setOnClickListener {
-            perform(ACTION_EPHEMERAL_KEY_REQUESTING)
+            sendMessage(sMessenger,ACTION_EPHEMERAL_KEY_REQUESTING)
         }
 
         // authenticate
         rootView.btnTest4.setOnClickListener {
-            perform(ACTION_AUTHENTICATING)
+            sendMessage(sMessenger,ACTION_AUTHENTICATING)
         }
 
-        // real control
+        // ---------------------------------
+        // real control .....
         rootView.btnTest5.setOnClickListener {
-            perform(ACTION_CLOSURES_REQUESTING)
+            sendMessage(sMessenger,ACTION_CLOSURES_REQUESTING)
         }
     }
 
@@ -182,7 +191,8 @@ class MainActivity : AppCompatActivity() {
 
             allGranted && hasRequiredBluetoothPermissions() -> {
                 // todo core method ...
-                perform(ACTION_CONNECTING)
+                sendMessage(sMessenger,ACTION_CONNECTING)
+                rootView.btnTest1.isEnabled = false
             }
 
             else -> {
@@ -217,16 +227,9 @@ class MainActivity : AppCompatActivity() {
     ) {
         if (it.resultCode == Activity.RESULT_OK) {
             // mBluetoothLeService?.startBleScan()
-            perform(ACTION_CONNECTING)
+            sendMessage(sMessenger, ACTION_CONNECTING)
         } else {
             promptEnableBluetooth()
-        }
-    }
-
-    private fun perform(action: Int) {
-        Message.obtain().apply {
-            what = action
-            sMessenger!!.send(this)
         }
     }
 

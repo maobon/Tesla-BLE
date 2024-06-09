@@ -134,7 +134,8 @@ class GattCallback(
     private fun processReceiveMsg(characteristic: BluetoothGattCharacteristic, value: ByteArray) {
         if (characteristic.uuid == TESLA_RX_CHARACTERISTIC_UUID) {
             val fromVCSECMessage: vcsec.FromVCSECMessage? = MessageUtil.autoChaCha(value)
-            Log.d(TAG, "processReceiveMsg: $fromVCSECMessage")
+            Log.d(TAG, "received content from vehicle: processReceiveMsg:$fromVCSECMessage")
+
             mStatusListener.onVehicleResponse(fromVCSECMessage)
         }
     }

@@ -40,8 +40,8 @@ import com.teslamotors.protocol.util.Operations.AUTHENTICATING
 import com.teslamotors.protocol.util.Operations.CLOSURES_REQUESTING
 import com.teslamotors.protocol.util.Operations.EPHEMERAL_KEY_REQUESTING
 import com.teslamotors.protocol.util.Operations.KEY_TO_WHITELIST_ADDING
-import com.teslamotors.protocol.util.TESLA_BLUETOOTH_NAME
-import com.teslamotors.protocol.util.TESLA_RX_CHARACTERISTIC_DESCRIPTOR_UUID
+import com.teslamotors.protocol.util.XIAOMI_ENV_SENSOR_CCC_DESCRIPTOR_UUID
+import com.teslamotors.protocol.util.XIAOMI_MIJIA_SENSOR_NAME
 import com.teslamotors.protocol.util.countAutoIncrement
 import com.teslamotors.protocol.util.sendMessage
 
@@ -91,10 +91,10 @@ class BluetoothLeService : Service() {
                 rxCharacteristic = rx
 
                 // xiaomi using for test
-                // mGatt.enableNotifications(rx, XIAOMI_ENV_SENSOR_CCC_DESCRIPTOR_UUID)
+                mGatt.enableNotifications(rx, XIAOMI_ENV_SENSOR_CCC_DESCRIPTOR_UUID)
 
                 // tesla enable notification
-                mGatt.enableNotifications(rx, TESLA_RX_CHARACTERISTIC_DESCRIPTOR_UUID)
+                // mGatt.enableNotifications(rx, TESLA_RX_CHARACTERISTIC_DESCRIPTOR_UUID)
 
                 // connect process completed .... !!
                 sendMessage(
@@ -206,10 +206,10 @@ class BluetoothLeService : Service() {
             mScanning = true
 
             // xiaomi
-            // val scanFilter = ScanFilter.Builder().setDeviceName(XIAOMI_MIJIA_SENSOR_NAME).build()
+            val scanFilter = ScanFilter.Builder().setDeviceName(XIAOMI_MIJIA_SENSOR_NAME).build()
 
             // tesla
-            val scanFilter = ScanFilter.Builder().setDeviceName(TESLA_BLUETOOTH_NAME).build()
+            // val scanFilter = ScanFilter.Builder().setDeviceName(TESLA_BLUETOOTH_NAME).build()
 
             val scanSettings =
                 ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build()
@@ -231,10 +231,11 @@ class BluetoothLeService : Service() {
 
     private fun stopBleScan() {
         Log.i(TAG, "stopBleScan: ")
-        mScanning = false
-        mBluetoothUtil.mScanner.stopScan(mScanCallback)
-
-        sendMessage(cMessenger, ACTION_CONNECTING_RESP)
+        if (mScanning) {
+            mScanning = false
+            // endMessage(cMessenger, ACTION_CONNECTING_RESP)
+            mBluetoothUtil.mScanner.stopScan(mScanCallback)
+        }
     }
 
     // -----------------------------------------------

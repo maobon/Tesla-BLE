@@ -15,6 +15,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.Message
 import android.os.Messenger
+import android.text.TextUtils
 import android.util.Log
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
@@ -75,21 +76,31 @@ class MainActivity : AppCompatActivity() {
             when (msg.what) {
                 ACTION_CONNECTING_RESP -> {
                     Log.d(TAG, "handleMessage: ACTION_CONNECTING_RESP ...")
+
                     // 1. scan and connect result
+                    if (msg.obj != null) {
+                        val status = msg.obj as String
+                        if (!TextUtils.isEmpty(status))
+                            activity.rootView.tvConnectStatus.text = status
+                    }
 
                     // 2. release button status
                     activity.rootView.btnTest1.isEnabled = true
 
                 }
+
                 ACTION_KEY_TO_WHITELIST_ADDING_RESP -> {
 
                 }
+
                 ACTION_EPHEMERAL_KEY_REQUESTING_RESP -> {
 
                 }
+
                 ACTION_AUTHENTICATING_RESP -> {
 
                 }
+
                 ACTION_CLOSURES_REQUESTING_RESP -> {
 
                 }
@@ -114,30 +125,31 @@ class MainActivity : AppCompatActivity() {
                 )
             } else {
                 it.isEnabled = false
-                sendMessage(sMessenger,ACTION_CONNECTING)
+                rootView.tvConnectStatus.text = ""
+                sendMessage(sMessenger, ACTION_CONNECTING)
             }
         }
 
         // ---------------------------------
         // add key to white list
         rootView.btnTest2.setOnClickListener {
-            sendMessage(sMessenger,ACTION_KEY_TO_WHITELIST_ADDING)
+            sendMessage(sMessenger, ACTION_KEY_TO_WHITELIST_ADDING)
         }
 
         // request ephemeral key
         rootView.btnTest3.setOnClickListener {
-            sendMessage(sMessenger,ACTION_EPHEMERAL_KEY_REQUESTING)
+            sendMessage(sMessenger, ACTION_EPHEMERAL_KEY_REQUESTING)
         }
 
         // authenticate
         rootView.btnTest4.setOnClickListener {
-            sendMessage(sMessenger,ACTION_AUTHENTICATING)
+            sendMessage(sMessenger, ACTION_AUTHENTICATING)
         }
 
         // ---------------------------------
         // real control .....
         rootView.btnTest5.setOnClickListener {
-            sendMessage(sMessenger,ACTION_CLOSURES_REQUESTING)
+            sendMessage(sMessenger, ACTION_CLOSURES_REQUESTING)
         }
     }
 
@@ -191,7 +203,7 @@ class MainActivity : AppCompatActivity() {
 
             allGranted && hasRequiredBluetoothPermissions() -> {
                 // todo core method ...
-                sendMessage(sMessenger,ACTION_CONNECTING)
+                sendMessage(sMessenger, ACTION_CONNECTING)
                 rootView.btnTest1.isEnabled = false
             }
 

@@ -52,21 +52,21 @@ class GattCallback(
             // Consider connection setup as complete here
 
             // xiaomi using for test
-            // val xiaomiService = getService(XIAOMI_ENV_SENSOR_SERVICE_UUID)
-            // val xiaomiCharacteristic = xiaomiService.run {
-            //     getCharacteristic(XIAOMI_ENV_SENSOR_CHARACTERISTIC_UUID)
-            // }
-            // mStatusListener.onGetCharacteristics(xiaomiCharacteristic, xiaomiCharacteristic)
+            val xiaomiService = getService(XIAOMI_ENV_SENSOR_SERVICE_UUID)
+            val xiaomiCharacteristic = xiaomiService.run {
+                getCharacteristic(XIAOMI_ENV_SENSOR_CHARACTERISTIC_UUID)
+            }
+            mStatusListener.onGetCharacteristics(xiaomiCharacteristic, xiaomiCharacteristic)
 
             // tesla
-            val teslaService = getService(TESLA_SERVICE_UUID)
-            val characteristicTx = teslaService.run {
-                getCharacteristic(TESLA_TX_CHARACTERISTIC_UUID)
-            }
-            val characteristicRx = teslaService.run {
-                getCharacteristic(TESLA_RX_CHARACTERISTIC_UUID)
-            }
-            mStatusListener.onGetCharacteristics(characteristicTx, characteristicRx)
+            // val teslaService = getService(TESLA_SERVICE_UUID)
+            // val characteristicTx = teslaService.run {
+            //     getCharacteristic(TESLA_TX_CHARACTERISTIC_UUID)
+            // }
+            // val characteristicRx = teslaService.run {
+            //     getCharacteristic(TESLA_RX_CHARACTERISTIC_UUID)
+            // }
+            // mStatusListener.onGetCharacteristics(characteristicTx, characteristicRx)
         }
     }
 
@@ -146,9 +146,9 @@ class GattCallback(
         }
 
         // xiaomi using for test
-        // else if (characteristic.uuid == XIAOMI_ENV_SENSOR_CHARACTERISTIC_UUID){
-        //     mStatusListener.onVehicleResponse(value)
-        // }
+        else if (characteristic.uuid == XIAOMI_ENV_SENSOR_CHARACTERISTIC_UUID){
+            // mStatusListener.onVehicleResponse(value)
+        }
     }
 
     companion object {

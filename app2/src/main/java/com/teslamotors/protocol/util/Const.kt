@@ -2,7 +2,8 @@ package com.teslamotors.protocol.util
 
 import java.util.*
 
-const val TESLA_BLUETOOTH_NAME = "Saadbad01e89502c1C"
+const val TESLA_BLUETOOTH_BEACON_UUID = "74278BDA-B644-4520-8F0C-720EAF059935"
+const val TESLA_BLUETOOTH_BEACON_LOCAL_NAME = "Saadbad01e89502c1C" // only for my car
 
 private const val TESLA_SERVICE = "00000211-b2d1-43f0-9b88-960cebf8b91e"
 private const val TESLA_TX_CHARACTERISTIC = "00000212-b2d1-43f0-9b88-960cebf8b91e"

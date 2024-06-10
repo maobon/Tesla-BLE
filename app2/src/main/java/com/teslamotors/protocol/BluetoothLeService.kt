@@ -5,7 +5,6 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Intent
@@ -15,12 +14,14 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.Message
 import android.os.Messenger
+import android.text.TextUtils
 import android.util.Log
 import androidx.annotation.RequiresApi
 import com.teslamotors.protocol.ble.BluetoothUtil
 import com.teslamotors.protocol.ble.ConnectionStateListener
 import com.teslamotors.protocol.ble.GattCallback
 import com.teslamotors.protocol.ble.GattUtil
+import com.teslamotors.protocol.ble.beacon.BeaconUtil
 import com.teslamotors.protocol.keystore.KeyStoreUtils
 import com.teslamotors.protocol.msg.action.AuthRequest
 import com.teslamotors.protocol.msg.action.ClosuresRequest
@@ -40,7 +41,8 @@ import com.teslamotors.protocol.util.Operations.AUTHENTICATING
 import com.teslamotors.protocol.util.Operations.CLOSURES_REQUESTING
 import com.teslamotors.protocol.util.Operations.EPHEMERAL_KEY_REQUESTING
 import com.teslamotors.protocol.util.Operations.KEY_TO_WHITELIST_ADDING
-import com.teslamotors.protocol.util.TESLA_BLUETOOTH_NAME
+import com.teslamotors.protocol.util.TESLA_BLUETOOTH_BEACON_LOCAL_NAME
+import com.teslamotors.protocol.util.TESLA_BLUETOOTH_BEACON_UUID
 import com.teslamotors.protocol.util.TESLA_RX_CHARACTERISTIC_DESCRIPTOR_UUID
 import com.teslamotors.protocol.util.countAutoIncrement
 import com.teslamotors.protocol.util.sendMessage
@@ -150,15 +152,33 @@ class BluetoothLeService : Service() {
     @Suppress("all")
     private val mScanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
+
             val device = result.device
-            Log.d(TAG, "connecting!!! ---> : ${device.name} + ${device.address}")
 
-            if (mScanning) {
-                stopBleScan()
+            // normal ble device is ok
+            // Log.d(TAG, "connecting!!! ---> : ${device.name} + ${device.address}")
+            // if (mScanning) {
+            //     stopBleScan()
+            // }
+            // connectTargetDevice(device)
+
+            // Tesla iBeacon protocol
+            val beaconUtil = BeaconUtil.getInstance()
+            if (TextUtils.isEmpty(device.name)) {
+                result.scanRecord?.bytes.apply {
+                    if (beaconUtil.findBeaconPattern(this)) {
+                        if (beaconUtil.uuid == TESLA_BLUETOOTH_BEACON_UUID) {
+                            if (beaconUtil.completeLocalName == TESLA_BLUETOOTH_BEACON_LOCAL_NAME) {
+                                Log.d(TAG, "onScanResult: find my car ...")
+                                if (mScanning) stopBleScan()
+
+                                // core target ...
+                                connectTargetDevice(device)
+                            }
+                        }
+                    }
+                }
             }
-
-            // todo ... core connect to the target ...
-            connectTargetDevice(device)
         }
 
         override fun onScanFailed(errorCode: Int) {
@@ -208,18 +228,18 @@ class BluetoothLeService : Service() {
             // xiaomi using for test
             // val scanFilter = ScanFilter.Builder().setDeviceName(XIAOMI_MIJIA_SENSOR_NAME).build()
 
-            // tesla
-            val scanFilter = ScanFilter.Builder().setDeviceName(TESLA_BLUETOOTH_NAME).build()
+            // val scanFilter = ScanFilter.Builder().setDeviceName(TESLA_BLUETOOTH_NAME).build()
+            // val filters = mutableListOf<ScanFilter>().apply {
+            //     add(scanFilter)
+            // }
 
-            val scanSettings =
-                ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build()
+            // SCAN_MODE_LOW_LATENCY
+            val scanSettings = ScanSettings.Builder()
+                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                .build()
 
-            val filters = mutableListOf<ScanFilter>().apply {
-                add(scanFilter)
-            }
-
-            mBluetoothUtil.mScanner.startScan(filters, scanSettings, mScanCallback)
-            countdownTime(15 * 1000)
+            mBluetoothUtil.mScanner.startScan(null, scanSettings, mScanCallback)
+            countdownTime(20 * 1000)
         }
     }
 

@@ -90,8 +90,18 @@ class BluetoothLeService : Service() {
                 txCharacteristic = tx
                 rxCharacteristic = rx
 
-                // enable notification
+                // xiaomi using for test
+                // mGatt.enableNotifications(rx, XIAOMI_ENV_SENSOR_CCC_DESCRIPTOR_UUID)
+
+                // tesla enable notification
                 mGatt.enableNotifications(rx, TESLA_RX_CHARACTERISTIC_DESCRIPTOR_UUID)
+
+                // connect process completed .... !!
+                sendMessage(
+                    cMessenger,
+                    ACTION_CONNECTING_RESP,
+                    "vehicle connected successful"
+                )
             }
 
             // response to Ac ....
@@ -195,6 +205,10 @@ class BluetoothLeService : Service() {
         } else {
             mScanning = true
 
+            // xiaomi
+            // val scanFilter = ScanFilter.Builder().setDeviceName(XIAOMI_MIJIA_SENSOR_NAME).build()
+
+            // tesla
             val scanFilter = ScanFilter.Builder().setDeviceName(TESLA_BLUETOOTH_NAME).build()
 
             val scanSettings =
@@ -219,6 +233,7 @@ class BluetoothLeService : Service() {
         Log.i(TAG, "stopBleScan: ")
         mScanning = false
         mBluetoothUtil.mScanner.stopScan(mScanCallback)
+
         sendMessage(cMessenger, ACTION_CONNECTING_RESP)
     }
 

@@ -125,13 +125,16 @@ fun Context.requestRelevantRuntimePermissions(belowS: () -> Unit, aboveS: () -> 
 //
 private const val TAG = "Utils"
 
-fun Context.sendMessage(messenger: Messenger?, action:Int){
-    if(messenger == null){
+fun Context.sendMessage(messenger: Messenger?, action: Int, obj: Any? = null) {
+    if (messenger == null) {
         Log.d(TAG, "sendMessage: messenger is null")
         return
     }
     Message.obtain().apply {
         what = action
+        if (obj != null) {
+            this.obj = obj
+        }
         messenger.send(this)
     }
 }

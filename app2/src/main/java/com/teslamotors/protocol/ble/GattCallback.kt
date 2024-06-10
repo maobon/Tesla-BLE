@@ -11,7 +11,6 @@ import com.teslamotors.protocol.util.TESLA_RX_CHARACTERISTIC_UUID
 import com.teslamotors.protocol.util.TESLA_SERVICE_UUID
 import com.teslamotors.protocol.util.TESLA_TX_CHARACTERISTIC_UUID
 import com.teslamotors.protocol.util.XIAOMI_ENV_SENSOR_CHARACTERISTIC_UUID
-import com.teslamotors.protocol.util.XIAOMI_ENV_SENSOR_SERVICE_UUID
 import com.teslamotors.protocol.util.printGattTable
 import com.teslamotors.protocol.util.toHexString
 import com.teslamotors.protocol.vcsec
@@ -52,21 +51,21 @@ class GattCallback(
             // Consider connection setup as complete here
 
             // xiaomi using for test
-            val xiaomiService = getService(XIAOMI_ENV_SENSOR_SERVICE_UUID)
-            val xiaomiCharacteristic = xiaomiService.run {
-                getCharacteristic(XIAOMI_ENV_SENSOR_CHARACTERISTIC_UUID)
-            }
-            mStatusListener.onGetCharacteristics(xiaomiCharacteristic, xiaomiCharacteristic)
+            // val xiaomiService = getService(XIAOMI_ENV_SENSOR_SERVICE_UUID)
+            // val xiaomiCharacteristic = xiaomiService.run {
+            //     getCharacteristic(XIAOMI_ENV_SENSOR_CHARACTERISTIC_UUID)
+            // }
+            // mStatusListener.onGetCharacteristics(xiaomiCharacteristic, xiaomiCharacteristic)
 
             // tesla
-            // val teslaService = getService(TESLA_SERVICE_UUID)
-            // val characteristicTx = teslaService.run {
-            //     getCharacteristic(TESLA_TX_CHARACTERISTIC_UUID)
-            // }
-            // val characteristicRx = teslaService.run {
-            //     getCharacteristic(TESLA_RX_CHARACTERISTIC_UUID)
-            // }
-            // mStatusListener.onGetCharacteristics(characteristicTx, characteristicRx)
+            val teslaService = getService(TESLA_SERVICE_UUID)
+            val characteristicTx = teslaService.run {
+                getCharacteristic(TESLA_TX_CHARACTERISTIC_UUID)
+            }
+            val characteristicRx = teslaService.run {
+                getCharacteristic(TESLA_RX_CHARACTERISTIC_UUID)
+            }
+            mStatusListener.onGetCharacteristics(characteristicTx, characteristicRx)
         }
     }
 
@@ -146,7 +145,7 @@ class GattCallback(
         }
 
         // xiaomi using for test
-        else if (characteristic.uuid == XIAOMI_ENV_SENSOR_CHARACTERISTIC_UUID){
+        else if (characteristic.uuid == XIAOMI_ENV_SENSOR_CHARACTERISTIC_UUID) {
             // mStatusListener.onVehicleResponse(value)
         }
     }

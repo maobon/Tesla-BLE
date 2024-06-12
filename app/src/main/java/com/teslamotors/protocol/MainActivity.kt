@@ -174,6 +174,7 @@ class MainActivity : AppCompatActivity() {
             return
 
         Thread {
+            // important differences between with app2
             bluetoothLeScanner.startScan(scannerCallback)
         }.start()
     }

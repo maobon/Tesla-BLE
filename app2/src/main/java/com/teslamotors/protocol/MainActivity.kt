@@ -36,6 +36,8 @@ import com.teslamotors.protocol.util.ACTION_EPHEMERAL_KEY_REQUESTING
 import com.teslamotors.protocol.util.ACTION_EPHEMERAL_KEY_REQUESTING_RESP
 import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING
 import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING_RESP
+import com.teslamotors.protocol.util.ACTION_TOAST
+import com.teslamotors.protocol.util.createToast
 import com.teslamotors.protocol.util.hasPermission
 import com.teslamotors.protocol.util.hasRequiredBluetoothPermissions
 import com.teslamotors.protocol.util.requestRelevantRuntimePermissions
@@ -74,6 +76,10 @@ class MainActivity : AppCompatActivity() {
     ) : Handler(Looper.getMainLooper()) {
         override fun handleMessage(msg: Message) {
             when (msg.what) {
+                ACTION_TOAST -> {
+                    activity.createToast(activity, msg.obj as String)
+                }
+
                 ACTION_CONNECTING_RESP -> {
                     Log.d(TAG, "handleMessage: ACTION_CONNECTING_RESP ...")
 

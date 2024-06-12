@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Intent
@@ -14,14 +15,13 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.Message
 import android.os.Messenger
-import android.text.TextUtils
 import android.util.Log
 import androidx.annotation.RequiresApi
 import com.teslamotors.protocol.ble.BluetoothUtil
 import com.teslamotors.protocol.ble.ConnectionStateListener
 import com.teslamotors.protocol.ble.GattCallback
 import com.teslamotors.protocol.ble.GattUtil
-import com.teslamotors.protocol.ble.beacon.BeaconUtil
+import com.teslamotors.protocol.ble.beacon.TeslaBeacon
 import com.teslamotors.protocol.keystore.KeyStoreUtils
 import com.teslamotors.protocol.msg.action.AuthRequest
 import com.teslamotors.protocol.msg.action.ClosuresRequest
@@ -36,16 +36,17 @@ import com.teslamotors.protocol.util.ACTION_CONNECTING
 import com.teslamotors.protocol.util.ACTION_CONNECTING_RESP
 import com.teslamotors.protocol.util.ACTION_EPHEMERAL_KEY_REQUESTING
 import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING
+import com.teslamotors.protocol.util.ACTION_TOAST
 import com.teslamotors.protocol.util.JUtils
 import com.teslamotors.protocol.util.Operations.AUTHENTICATING
 import com.teslamotors.protocol.util.Operations.CLOSURES_REQUESTING
 import com.teslamotors.protocol.util.Operations.EPHEMERAL_KEY_REQUESTING
 import com.teslamotors.protocol.util.Operations.KEY_TO_WHITELIST_ADDING
 import com.teslamotors.protocol.util.TESLA_BLUETOOTH_BEACON_LOCAL_NAME
-import com.teslamotors.protocol.util.TESLA_BLUETOOTH_BEACON_UUID
 import com.teslamotors.protocol.util.TESLA_RX_CHARACTERISTIC_DESCRIPTOR_UUID
 import com.teslamotors.protocol.util.countAutoIncrement
 import com.teslamotors.protocol.util.sendMessage
+
 
 @Suppress("all")
 class BluetoothLeService : Service() {
@@ -149,11 +150,16 @@ class BluetoothLeService : Service() {
         Log.d(TAG, "initKeystore: x963FormatPublicKey=${JUtils.bytesToHex(x963FormatPublicKey)}")
     }
 
-    @Suppress("all")
     private val mScanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
+            super.onScanResult(callbackType, result)
+            Log.d(TAG, "onScanResult: find a Tesla")
+            Log.i(TAG, "BLE scan result: bytes=${JUtils.bytesToHex(result.scanRecord?.bytes)}")
 
-            val device = result.device
+            // val manufacturerData: SparseArray<ByteArray>? = result.scanRecord?.manufacturerSpecificData
+            // manufacturerData?.forEach { key, value ->
+            //     if (key == 76) { /*0x004c is apple company id*/ }
+            // }
 
             // normal ble device is ok
             // Log.d(TAG, "connecting!!! ---> : ${device.name} + ${device.address}")
@@ -163,20 +169,15 @@ class BluetoothLeService : Service() {
             // connectTargetDevice(device)
 
             // Tesla iBeacon protocol
-            val beaconUtil = BeaconUtil.getInstance()
-            if (TextUtils.isEmpty(device.name)) {
-                result.scanRecord?.bytes.apply {
-                    if (beaconUtil.findBeaconPattern(this)) {
-                        if (beaconUtil.uuid == TESLA_BLUETOOTH_BEACON_UUID) {
-                            if (beaconUtil.completeLocalName == TESLA_BLUETOOTH_BEACON_LOCAL_NAME) {
-                                Log.d(TAG, "onScanResult: find my car ...")
-                                if (mScanning) stopBleScan()
+            result.scanRecord?.advertisingDataMap?.get(9).let {
+                Log.i(TAG, "onScanResult: completeLocalName=${java.lang.String(it)}")
 
-                                // core target ...
-                                connectTargetDevice(device)
-                            }
-                        }
-                    }
+                if (TESLA_BLUETOOTH_BEACON_LOCAL_NAME == it.toString()) {
+                    Log.d(TAG, "onScanResult: === FIND MY CAR ===")
+                    sendMessage(cMessenger, ACTION_TOAST, "Find my car")
+
+                    if (mScanning) stopBleScan()
+                    connectTargetDevice(result.device)
                 }
             }
         }
@@ -228,19 +229,29 @@ class BluetoothLeService : Service() {
             // xiaomi using for test
             // val scanFilter = ScanFilter.Builder().setDeviceName(XIAOMI_MIJIA_SENSOR_NAME).build()
 
-            // val scanFilter = ScanFilter.Builder().setDeviceName(TESLA_BLUETOOTH_NAME).build()
-            // val filters = mutableListOf<ScanFilter>().apply {
-            //     add(scanFilter)
-            // }
+            // tesla
+            val filters = mutableListOf<ScanFilter>().apply {
+                add(
+                    ScanFilter.Builder()
+                        .setManufacturerData(
+                            TeslaBeacon.MANUFACTURER_ID,
+                            TeslaBeacon.getManufactureData(),
+                            TeslaBeacon.getManufactureDataMask()
+                        )
+                        .build()
+                )
+            }
 
-            // SCAN_MODE_LOW_LATENCY
-            val scanSettings = ScanSettings.Builder()
-                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-                .build()
-
-            mBluetoothUtil.mScanner.startScan(null, scanSettings, mScanCallback)
-            countdownTime(20 * 1000)
+            mBluetoothUtil.mScanner.startScan(filters, getScanSettings(), mScanCallback)
+            countdownTime(15 * 1000)
         }
+    }
+
+    private fun getScanSettings(): ScanSettings {
+        return ScanSettings.Builder()
+            .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
+            .setReportDelay(0)
+            .build()
     }
 
     private fun countdownTime(ms: Long) {
@@ -302,5 +313,17 @@ class BluetoothLeService : Service() {
 
     private companion object {
         private const val TAG = "BluetoothLeService"
+    }
+
+    fun isIBeacon(packetData: ByteArray): Boolean {
+        var startByte = 2
+        while (startByte <= 5) {
+            if (packetData[startByte + 2].toInt() and 0xff == 0x02 && packetData[startByte + 3].toInt() and 0xff == 0x15) {
+                // debug result: startByte = 5
+                return true
+            }
+            startByte++
+        }
+        return false
     }
 }

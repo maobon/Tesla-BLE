@@ -36,7 +36,8 @@ object DialogUtil {
                     activity.getString(R.string.prompt_content_location)
                 ) { _, _ ->
                     val permissions = arrayOf(
-                        Manifest.permission.ACCESS_FINE_LOCATION
+                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                        Manifest.permission.ACCESS_FINE_LOCATION,
                     )
                     ActivityCompat.requestPermissions(
                         activity, permissions, PERMISSION_REQUEST_CODE
@@ -44,6 +45,7 @@ object DialogUtil {
                 }
             }
 
+            // scan for iBeacon must need  ACCESS_COARSE_LOCATION, ACCESS_FINE_LOCATION
             PermissionType.Bluetooth -> {
                 create(
                     activity,
@@ -51,7 +53,9 @@ object DialogUtil {
                     activity.getString(R.string.prompt_content_bluetooth)
                 ) { _, _ ->
                     val permissions = arrayOf(
-                        Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT
+                        Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT,
+                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                        Manifest.permission.ACCESS_FINE_LOCATION,
                     )
                     ActivityCompat.requestPermissions(
                         activity, permissions, PERMISSION_REQUEST_CODE

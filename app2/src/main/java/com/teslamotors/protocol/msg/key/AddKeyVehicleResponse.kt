@@ -15,6 +15,9 @@ class AddKeyVehicleResponse {
 
         when (fromVCSECMessage.commandStatus.whitelistOperationStatus.operationStatus) {
 
+            // todo ......
+            // 点击屏幕 确定添加钥匙 确认成功后 列表里面就可以检测到了..... true
+
             universal_message.OperationStatus_E.OPERATIONSTATUS_OK -> {
                 Log.d(TAG, "perform: ADD_KEY operation status OK")
 

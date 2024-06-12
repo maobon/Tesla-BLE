@@ -17,6 +17,7 @@ import android.os.Message
 import android.os.Messenger
 import android.text.TextUtils
 import android.util.Log
+import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
@@ -42,6 +43,7 @@ import com.teslamotors.protocol.util.hasPermission
 import com.teslamotors.protocol.util.hasRequiredBluetoothPermissions
 import com.teslamotors.protocol.util.requestRelevantRuntimePermissions
 import com.teslamotors.protocol.util.sendMessage
+import com.teslamotors.protocol.util.useSharedKey
 
 class MainActivity : AppCompatActivity() {
 
@@ -93,6 +95,12 @@ class MainActivity : AppCompatActivity() {
                     // 2. release button status
                     activity.rootView.btnTest1.isEnabled = true
 
+                    // 3 ... some ui control
+                    if (activity.useSharedKey() != null) {
+                        activity.rootView.btnTest5.visibility = View.VISIBLE
+                    } else {
+                        activity.rootView.btnTest2.visibility = View.VISIBLE
+                    }
                 }
 
                 ACTION_KEY_TO_WHITELIST_ADDING_RESP -> {
@@ -104,7 +112,11 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 ACTION_AUTHENTICATING_RESP -> {
+                    activity.createToast(activity, msg.obj as String)
 
+                    // change some ui
+                    activity.rootView.btnTest5.visibility = View.VISIBLE
+                    activity.rootView.btnTest2.visibility = View.INVISIBLE
                 }
 
                 ACTION_CLOSURES_REQUESTING_RESP -> {
@@ -156,6 +168,11 @@ class MainActivity : AppCompatActivity() {
         // real control .....
         rootView.btnTest5.setOnClickListener {
             sendMessage(sMessenger, ACTION_CLOSURES_REQUESTING)
+        }
+
+        rootView.btnTest5.setOnLongClickListener { _ ->
+            sendMessage(sMessenger, ACTION_CLOSURES_REQUESTING, true)
+            true
         }
     }
 

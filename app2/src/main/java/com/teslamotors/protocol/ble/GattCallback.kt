@@ -10,7 +10,6 @@ import com.teslamotors.protocol.util.MessageUtil
 import com.teslamotors.protocol.util.TESLA_RX_CHARACTERISTIC_UUID
 import com.teslamotors.protocol.util.TESLA_SERVICE_UUID
 import com.teslamotors.protocol.util.TESLA_TX_CHARACTERISTIC_UUID
-import com.teslamotors.protocol.util.XIAOMI_ENV_SENSOR_CHARACTERISTIC_UUID
 import com.teslamotors.protocol.util.printGattTable
 import com.teslamotors.protocol.util.toHexString
 import com.teslamotors.protocol.vcsec
@@ -140,14 +139,14 @@ class GattCallback(
         if (characteristic.uuid == TESLA_RX_CHARACTERISTIC_UUID) {
             val fromVCSECMessage: vcsec.FromVCSECMessage? = MessageUtil.autoChaCha(value)
             Log.d(TAG, "received content from vehicle: processReceiveMsg:$fromVCSECMessage")
-
-            mStatusListener.onVehicleResponse(fromVCSECMessage)
+            if (fromVCSECMessage != null)
+                mStatusListener.onVehicleResponse(fromVCSECMessage)
         }
 
         // xiaomi using for test
-        else if (characteristic.uuid == XIAOMI_ENV_SENSOR_CHARACTERISTIC_UUID) {
-            // mStatusListener.onVehicleResponse(value)
-        }
+        // else if (characteristic.uuid == XIAOMI_ENV_SENSOR_CHARACTERISTIC_UUID) {
+        //    mStatusListener.onVehicleResponse(value)
+        // }
     }
 
     companion object {

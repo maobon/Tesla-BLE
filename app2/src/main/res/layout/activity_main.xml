@@ -20,7 +20,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerInParent="true"
-        android:text="Hello World!" />
+        android:text="Connect to Tesla"
+        android:textAllCaps="false" />
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btn_test_2"
@@ -28,7 +29,9 @@
         android:layout_height="wrap_content"
         android:layout_below="@id/btn_test_1"
         android:layout_centerInParent="true"
-        android:text="Hello World!" />
+        android:text="Add Key"
+        android:textAllCaps="false"
+        android:visibility="invisible" />
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btn_test_3"
@@ -36,7 +39,9 @@
         android:layout_height="wrap_content"
         android:layout_below="@id/btn_test_2"
         android:layout_centerInParent="true"
-        android:text="Hello World!" />
+        android:text="Request Ephemeral Key"
+        android:textAllCaps="false"
+        android:visibility="gone" />
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btn_test_4"
@@ -44,7 +49,9 @@
         android:layout_height="wrap_content"
         android:layout_below="@id/btn_test_3"
         android:layout_centerInParent="true"
-        android:text="Hello World!" />
+        android:text="Auth"
+        android:textAllCaps="false"
+        android:visibility="gone" />
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btn_test_5"
@@ -52,6 +59,8 @@
         android:layout_height="wrap_content"
         android:layout_below="@id/btn_test_4"
         android:layout_centerInParent="true"
-        android:text="Hello World!" />
+        android:text="Real Control"
+        android:textAllCaps="false"
+        android:visibility="invisible" />
 
 </RelativeLayout>

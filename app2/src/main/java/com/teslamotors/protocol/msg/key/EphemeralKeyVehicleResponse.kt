@@ -8,6 +8,7 @@ import com.teslamotors.protocol.keystore.EccCurvy
 import com.teslamotors.protocol.keystore.KeyStoreUtils
 import com.teslamotors.protocol.util.JUtils
 import com.teslamotors.protocol.util.to4ByteArray
+import com.teslamotors.protocol.util.useSharedKey
 import com.teslamotors.protocol.vcsec.FromVCSECMessage
 import java.security.interfaces.ECPublicKey
 import javax.crypto.Cipher
@@ -37,6 +38,12 @@ class EphemeralKeyVehicleResponse {
             .getSharedKey(context, ecPublicKey) // sharedKey
 
         Log.d(TAG, "perform: sharedKey ==>> ${JUtils.bytesToHex(sharedKey)}")
+
+        // ... stash the shared key
+        context.useSharedKey(sharedKey)
+        Log.d(TAG, "perform: sharedKey is saved")
+
+        // ...
 
         return sharedKey
     }

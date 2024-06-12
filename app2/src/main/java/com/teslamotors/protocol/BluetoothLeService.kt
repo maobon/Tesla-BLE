@@ -30,6 +30,7 @@ import com.teslamotors.protocol.msg.key.AddKeyVehicleResponse
 import com.teslamotors.protocol.msg.key.EphemeralKeyRequest
 import com.teslamotors.protocol.msg.key.EphemeralKeyVehicleResponse
 import com.teslamotors.protocol.util.ACTION_AUTHENTICATING
+import com.teslamotors.protocol.util.ACTION_AUTHENTICATING_RESP
 import com.teslamotors.protocol.util.ACTION_CLIENT_MESSENGER
 import com.teslamotors.protocol.util.ACTION_CLOSURES_REQUESTING
 import com.teslamotors.protocol.util.ACTION_CONNECTING
@@ -46,6 +47,7 @@ import com.teslamotors.protocol.util.TESLA_BLUETOOTH_BEACON_LOCAL_NAME
 import com.teslamotors.protocol.util.TESLA_RX_CHARACTERISTIC_DESCRIPTOR_UUID
 import com.teslamotors.protocol.util.countAutoIncrement
 import com.teslamotors.protocol.util.sendMessage
+import com.teslamotors.protocol.util.useSharedKey
 
 
 @Suppress("all")
@@ -81,8 +83,9 @@ class BluetoothLeService : Service() {
 
         mGattCallback = GattCallback(object : ConnectionStateListener {
             override fun onConnected(gatt: BluetoothGatt) {
-                mGatt = GattUtil(gatt)
+                Log.d(TAG, "onConnected: vehicle connected successful ...")
 
+                mGatt = GattUtil(gatt)
                 // auto next step discovery services
                 mGatt.discoveryServices()
             }
@@ -101,37 +104,52 @@ class BluetoothLeService : Service() {
 
                 // connect process completed .... !!
                 sendMessage(
-                    cMessenger,
-                    ACTION_CONNECTING_RESP,
-                    "vehicle connected successful"
+                    cMessenger, ACTION_CONNECTING_RESP, "vehicle connected successful"
                 )
             }
 
             // response to Ac ....
-            override fun onVehicleResponse(message: vcsec.FromVCSECMessage?) {
-                when (mGatt.opera) {
+            override fun onVehicleResponse(vcsecMsg: vcsec.FromVCSECMessage?) {
+                when (mGatt.opera) { // use to judge what action is running ...
+
                     KEY_TO_WHITELIST_ADDING -> {
-                        val ret = with(message!!) {
+                        val ret = with(vcsecMsg!!) {
                             AddKeyVehicleResponse().perform(this, keyStoreUtils.keyId)
                         }
                         Log.d(
                             TAG,
                             "onVehicleResponse: KEY_TO_WHITELIST_ADDING -> keystore process result: $ret"
                         )
+
+                        // todo add new sequence ...
+                        if (ret) {
+                            requestEphemeralKey()
+                        }
                     }
 
                     EPHEMERAL_KEY_REQUESTING -> {
-                        val sharedKey = with(message!!) {
+                        val sharedKey = with(vcsecMsg!!) {
                             EphemeralKeyVehicleResponse().perform(this@BluetoothLeService, this)
                         }
                         Log.d(
                             TAG,
                             "onVehicleResponse: EPHEMERAL_KEY_REQUESTING -> get shared key: $sharedKey"
                         )
+
+                        // todo .... add sequence ....
+                        if (sharedKey.isNotEmpty()) {
+                            authenticate()
+                        }
                     }
 
                     AUTHENTICATING -> {
-
+                        with(vcsecMsg!!) {
+                            val respCounter = commandStatus.signedMessageStatus.counter
+                            if (respCounter > 100) {
+                                // sendMessage(cMessenger, ACTION_TOAST, "Auth Successfully")
+                                sendMessage(cMessenger, ACTION_AUTHENTICATING_RESP, "Auth Successfully")
+                            }
+                        }
                     }
 
                     CLOSURES_REQUESTING -> {
@@ -169,12 +187,14 @@ class BluetoothLeService : Service() {
             // connectTargetDevice(device)
 
             // Tesla iBeacon protocol
+            // get complete local name from advertising data
             result.scanRecord?.advertisingDataMap?.get(9).let {
-                Log.i(TAG, "onScanResult: completeLocalName=${java.lang.String(it)}")
+                val localName = java.lang.String(it)
+                Log.i(TAG, "onScanResult: completeLocalName=$localName")
 
-                if (TESLA_BLUETOOTH_BEACON_LOCAL_NAME == it.toString()) {
+                if (TESLA_BLUETOOTH_BEACON_LOCAL_NAME.equals(localName)) {
                     Log.d(TAG, "onScanResult: === FIND MY CAR ===")
-                    sendMessage(cMessenger, ACTION_TOAST, "Find my car")
+                    // sendMessage(cMessenger, ACTION_TOAST, "Find my car")
 
                     if (mScanning) stopBleScan()
                     connectTargetDevice(result.device)
@@ -204,10 +224,15 @@ class BluetoothLeService : Service() {
                 }
 
                 ACTION_CONNECTING -> service.startBleScan()
+
                 ACTION_KEY_TO_WHITELIST_ADDING -> service.addKey()
                 ACTION_EPHEMERAL_KEY_REQUESTING -> service.requestEphemeralKey()
                 ACTION_AUTHENTICATING -> service.authenticate()
-                ACTION_CLOSURES_REQUESTING -> service.openPassengerDoor()
+
+                ACTION_CLOSURES_REQUESTING -> {
+                    val isFront = if (msg.obj == null) false else msg.obj as Boolean
+                    service.openPassengerDoor(isFront)
+                }
             }
         }
     }
@@ -232,13 +257,11 @@ class BluetoothLeService : Service() {
             // tesla
             val filters = mutableListOf<ScanFilter>().apply {
                 add(
-                    ScanFilter.Builder()
-                        .setManufacturerData(
-                            TeslaBeacon.MANUFACTURER_ID,
-                            TeslaBeacon.getManufactureData(),
-                            TeslaBeacon.getManufactureDataMask()
-                        )
-                        .build()
+                    ScanFilter.Builder().setManufacturerData(
+                        TeslaBeacon.MANUFACTURER_ID,
+                        TeslaBeacon.getManufactureData(),
+                        TeslaBeacon.getManufactureDataMask()
+                    ).build()
                 )
             }
 
@@ -248,10 +271,8 @@ class BluetoothLeService : Service() {
     }
 
     private fun getScanSettings(): ScanSettings {
-        return ScanSettings.Builder()
-            .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
-            .setReportDelay(0)
-            .build()
+        return ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
+            .setReportDelay(0).build()
     }
 
     private fun countdownTime(ms: Long) {
@@ -262,13 +283,11 @@ class BluetoothLeService : Service() {
     }
 
     private fun stopBleScan(sendAction: Boolean = false) {
-        Log.i(TAG, "stopBleScan: ")
         if (mScanning) {
+            Log.d(TAG, "stopBleScan: stop scan")
             mScanning = false
-            if (sendAction) {
-                sendMessage(cMessenger, ACTION_CONNECTING_RESP)
-            }
             mBluetoothUtil.mScanner.stopScan(mScanCallback)
+            if (sendAction) sendMessage(cMessenger, ACTION_CONNECTING_RESP)
         }
     }
 
@@ -285,6 +304,8 @@ class BluetoothLeService : Service() {
         mGatt.writeCharacteristic(
             txCharacteristic, requestMsg, KEY_TO_WHITELIST_ADDING
         )
+
+        sendMessage(cMessenger, ACTION_TOAST, "Tap Card")
     }
 
     // step3 ....................
@@ -297,17 +318,21 @@ class BluetoothLeService : Service() {
     // step 4 ...............................
     private fun authenticate() {
         Log.i(TAG, "authenticate: ")
-        val sharedKey: ByteArray = keyStoreUtils.sharedKey
-        val requestMsg = AuthRequest().perform(this, sharedKey, countAutoIncrement())
+        // val sharedKey: ByteArray = keyStoreUtils.sharedKey
+        val sharedKey: ByteArray? = useSharedKey()
+
+        val requestMsg = AuthRequest().perform(this, sharedKey!!, countAutoIncrement())
         mGatt.writeCharacteristic(txCharacteristic, requestMsg, AUTHENTICATING)
     }
 
     // -----------------------------------------------
     // real control
-    private fun openPassengerDoor() {
+    private fun openPassengerDoor(isFront: Boolean = false) {
         Log.i(TAG, "openPassengerDoor: ")
-        val sharedKey: ByteArray = keyStoreUtils.sharedKey
-        val requestMsg = ClosuresRequest().perform(this, sharedKey, countAutoIncrement())
+        // val sharedKey: ByteArray = keyStoreUtils.sharedKey
+        val sharedKey: ByteArray? = useSharedKey()
+
+        val requestMsg = ClosuresRequest().perform(this, sharedKey!!, countAutoIncrement(), isFront)
         mGatt.writeCharacteristic(txCharacteristic, requestMsg, CLOSURES_REQUESTING)
     }
 
@@ -315,15 +340,4 @@ class BluetoothLeService : Service() {
         private const val TAG = "BluetoothLeService"
     }
 
-    fun isIBeacon(packetData: ByteArray): Boolean {
-        var startByte = 2
-        while (startByte <= 5) {
-            if (packetData[startByte + 2].toInt() and 0xff == 0x02 && packetData[startByte + 3].toInt() and 0xff == 0x15) {
-                // debug result: startByte = 5
-                return true
-            }
-            startByte++
-        }
-        return false
-    }
 }

@@ -35,7 +35,7 @@ public class KeyStoreUtils {
     private static final String TAG = "KeystoreUtils";
 
     private byte[] x963PublicKey;
-    private byte[] sharedKey;
+    // private byte[] sharedKey;
 
     private final static KeyStoreUtils sKeystoreUtils = new KeyStoreUtils();
 
@@ -46,9 +46,9 @@ public class KeyStoreUtils {
     private KeyStoreUtils() {
     }
 
-    public byte[] getSharedKey() {
-        return sharedKey;
-    }
+    // public byte[] getSharedKey() {
+    //    return sharedKey;
+    // }
 
     @RequiresApi(api = Build.VERSION_CODES.S)
     public byte[] getKeyPair(Context context) throws KeyStoreException,
@@ -155,7 +155,7 @@ public class KeyStoreUtils {
                 .digest(aesSecret.getEncoded());
 
         // tesla 需要前16位
-        sharedKey = new byte[16];
+        byte[] sharedKey = new byte[16];
         System.arraycopy(aesSecretHash, 0, sharedKey, 0, 16);
 
         return sharedKey;

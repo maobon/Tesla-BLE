@@ -111,6 +111,24 @@ fun Context.countAutoIncrement() = with(getSharedPreferences(sp_name, Context.MO
     curr
 }
 
+// for shared key stash test
+fun Context.useSharedKey(sharedKey: ByteArray? = null) =
+    with(getSharedPreferences("key", Context.MODE_PRIVATE)) {
+        if (sharedKey != null) {
+            // save it
+            val keyHex = JUtils.bytesToHex(sharedKey)
+            edit().putString("shared", keyHex).apply()
+            return@with sharedKey
+        } else {
+            val hex = getString("shared", null)
+            if (hex != null) {
+                return@with JUtils.hexToBytes(hex)
+            } else {
+                return@with null
+            }
+        }
+    }
+
 // ....
 fun Context.requestRelevantRuntimePermissions(belowS: () -> Unit, aboveS: () -> Unit) {
     if (hasRequiredBluetoothPermissions())

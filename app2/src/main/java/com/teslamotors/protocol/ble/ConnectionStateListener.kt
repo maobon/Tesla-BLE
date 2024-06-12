@@ -3,6 +3,7 @@ package com.teslamotors.protocol.ble
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import com.teslamotors.protocol.vcsec
+import com.teslamotors.protocol.vcsec.FromVCSECMessage
 
 interface ConnectionStateListener {
 
@@ -10,5 +11,5 @@ interface ConnectionStateListener {
 
     fun onGetCharacteristics(tx: BluetoothGattCharacteristic, rx: BluetoothGattCharacteristic)
 
-    fun onVehicleResponse(message: vcsec.FromVCSECMessage?)
+    fun onVehicleResponse(vcsecMsg: FromVCSECMessage?)
 }

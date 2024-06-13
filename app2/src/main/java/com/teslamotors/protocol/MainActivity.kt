@@ -1,6 +1,7 @@
 package com.teslamotors.protocol
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.content.ComponentName
@@ -38,6 +39,7 @@ import com.teslamotors.protocol.util.ACTION_EPHEMERAL_KEY_REQUESTING_RESP
 import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING
 import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING_RESP
 import com.teslamotors.protocol.util.ACTION_TOAST
+import com.teslamotors.protocol.util.NotificationUtils
 import com.teslamotors.protocol.util.createToast
 import com.teslamotors.protocol.util.hasPermission
 import com.teslamotors.protocol.util.hasRequiredBluetoothPermissions
@@ -49,6 +51,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var rootView: ActivityMainBinding
     private lateinit var mBluetoothUtil: BluetoothUtil
+    private lateinit var mNotificationUtils: NotificationUtils
 
     private var sMessenger: Messenger? = null
     private val mClientHandler by lazy {
@@ -76,6 +79,8 @@ class MainActivity : AppCompatActivity() {
     internal class ClientHandler(
         private val activity: MainActivity
     ) : Handler(Looper.getMainLooper()) {
+
+        @RequiresApi(Build.VERSION_CODES.O)
         override fun handleMessage(msg: Message) {
             when (msg.what) {
                 ACTION_TOAST -> {
@@ -101,6 +106,9 @@ class MainActivity : AppCompatActivity() {
                     } else {
                         activity.rootView.btnTest2.visibility = View.VISIBLE
                     }
+
+                    // 4. post notification
+                    activity.mNotificationUtils.postNotification()
                 }
 
                 ACTION_KEY_TO_WHITELIST_ADDING_RESP -> {
@@ -127,6 +135,7 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+    @SuppressLint("NewApi")
     @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -134,6 +143,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(rootView.root)
 
         mBluetoothUtil = BluetoothUtil(this@MainActivity)
+        mNotificationUtils = NotificationUtils(this@MainActivity)
 
         // scan and connect to vehicle
         rootView.btnTest1.setOnClickListener {
@@ -190,6 +200,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @SuppressLint("NewApi")
     @RequiresApi(Build.VERSION_CODES.S)
     override fun onRequestPermissionsResult(
         requestCode: Int, permissions: Array<out String>, grantResults: IntArray
@@ -268,12 +279,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.S)
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun requestLocationPermission() {
         DialogUtil.showReqPermissions(DialogUtil.PermissionType.Location, this)
     }
 
-    @RequiresApi(Build.VERSION_CODES.S)
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun requestBluetoothPermissions() {
         DialogUtil.showReqPermissions(DialogUtil.PermissionType.Bluetooth, this)
     }

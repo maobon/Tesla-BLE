@@ -37,6 +37,8 @@ import com.teslamotors.protocol.util.ACTION_CONNECTING
 import com.teslamotors.protocol.util.ACTION_CONNECTING_RESP
 import com.teslamotors.protocol.util.ACTION_EPHEMERAL_KEY_REQUESTING
 import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING
+import com.teslamotors.protocol.util.ACTION_OPEN_FRONT_PASSENGER_DOOR
+import com.teslamotors.protocol.util.ACTION_OPEN_REAR_PASSENGER_DOOR
 import com.teslamotors.protocol.util.ACTION_TOAST
 import com.teslamotors.protocol.util.JUtils
 import com.teslamotors.protocol.util.Operations.AUTHENTICATING
@@ -73,7 +75,6 @@ class BluetoothLeService : Service() {
     private val mServiceHandler by lazy {
         ServiceHandler(this@BluetoothLeService)
     }
-
 
     @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate() {
@@ -147,7 +148,9 @@ class BluetoothLeService : Service() {
                             val respCounter = commandStatus.signedMessageStatus.counter
                             if (respCounter > 100) {
                                 // sendMessage(cMessenger, ACTION_TOAST, "Auth Successfully")
-                                sendMessage(cMessenger, ACTION_AUTHENTICATING_RESP, "Auth Successfully")
+                                sendMessage(
+                                    cMessenger, ACTION_AUTHENTICATING_RESP, "Auth Successfully"
+                                )
                             }
                         }
                     }
@@ -235,6 +238,20 @@ class BluetoothLeService : Service() {
                 }
             }
         }
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when (intent?.action) {
+            ACTION_OPEN_FRONT_PASSENGER_DOOR -> {
+                openPassengerDoor(true)
+            }
+
+            ACTION_OPEN_REAR_PASSENGER_DOOR -> {
+                openPassengerDoor(false)
+            }
+        }
+
+        return super.onStartCommand(intent, flags, startId)
     }
 
     override fun onBind(intent: Intent): IBinder {
@@ -330,9 +347,9 @@ class BluetoothLeService : Service() {
     private fun openPassengerDoor(isFront: Boolean = false) {
         Log.i(TAG, "openPassengerDoor: ")
         // val sharedKey: ByteArray = keyStoreUtils.sharedKey
-        val sharedKey: ByteArray? = useSharedKey()
+        val sharedKey: ByteArray = useSharedKey() ?: return
 
-        val requestMsg = ClosuresRequest().perform(this, sharedKey!!, countAutoIncrement(), isFront)
+        val requestMsg = ClosuresRequest().perform(this, sharedKey, countAutoIncrement(), isFront)
         mGatt.writeCharacteristic(txCharacteristic, requestMsg, CLOSURES_REQUESTING)
     }
 

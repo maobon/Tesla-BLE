@@ -11,6 +11,7 @@ import android.os.Message
 import android.os.Messenger
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -116,14 +117,17 @@ fun Context.useSharedKey(sharedKey: ByteArray? = null) =
     with(getSharedPreferences("key", Context.MODE_PRIVATE)) {
         if (sharedKey != null) {
             // save it
+            Log.d(TAG, "useSharedKey: save sharedKey into sp")
             val keyHex = JUtils.bytesToHex(sharedKey)
             edit().putString("shared", keyHex).apply()
             return@with sharedKey
         } else {
             val hex = getString("shared", null)
             if (hex != null) {
+                Log.d(TAG, "useSharedKey: get sharedKey from sp")
                 return@with JUtils.hexToBytes(hex)
             } else {
+                Log.d(TAG, "useSharedKey: sharedKey is null")
                 return@with null
             }
         }

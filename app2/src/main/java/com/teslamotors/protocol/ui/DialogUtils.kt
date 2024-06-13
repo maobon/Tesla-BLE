@@ -26,7 +26,7 @@ object DialogUtil {
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.S)
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     fun showReqPermissions(permissionType: PermissionType, activity: Activity) {
         when (permissionType) {
             PermissionType.Location -> {
@@ -38,6 +38,7 @@ object DialogUtil {
                     val permissions = arrayOf(
                         Manifest.permission.ACCESS_COARSE_LOCATION,
                         Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.POST_NOTIFICATIONS
                     )
                     ActivityCompat.requestPermissions(
                         activity, permissions, PERMISSION_REQUEST_CODE
@@ -58,7 +59,9 @@ object DialogUtil {
                         Manifest.permission.BLUETOOTH_CONNECT,
                         Manifest.permission.ACCESS_COARSE_LOCATION,
                         Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.POST_NOTIFICATIONS
                     )
+
                     ActivityCompat.requestPermissions(
                         activity, permissions, PERMISSION_REQUEST_CODE
                     )

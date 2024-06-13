@@ -11,4 +11,10 @@
         Starting from Android 12, the system requires apps to be granted Bluetooth access in order to scan for and connect to BLE devices.
     </string>
 
+    <string name="channel_name">app3</string>
+    <string name="channel_description">app3</string>
+
+    <string name="action_front">Front</string>
+    <string name="action_rear">Rear</string>
+
 </resources>

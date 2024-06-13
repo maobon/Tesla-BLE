@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">app3</string>
+
+    <string name="channel_name">app3</string>
+    <string name="channel_description">app3</string>
+
+    <string name="action_one">First</string>
+    <string name="action_two">Second</string>
+</resources>

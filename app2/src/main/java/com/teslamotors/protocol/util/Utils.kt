@@ -11,7 +11,6 @@ import android.os.Message
 import android.os.Messenger
 import android.util.Log
 import android.widget.Toast
-import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -147,7 +146,7 @@ fun Context.requestRelevantRuntimePermissions(belowS: () -> Unit, aboveS: () -> 
 //
 private const val TAG = "Utils"
 
-fun Context.sendMessage(messenger: Messenger?, action: Int, obj: Any? = null) {
+fun sendMessage(messenger: Messenger?, action: Int, obj: Any? = null) {
     if (messenger == null) {
         Log.d(TAG, "sendMessage: messenger is null")
         return

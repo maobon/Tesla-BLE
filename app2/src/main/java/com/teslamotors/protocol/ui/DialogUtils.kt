@@ -18,11 +18,18 @@ object DialogUtil {
     }
 
     private fun create(
-        activity: Activity, title: String, message: String, onClickListener: OnClickListener
+        activity: Activity,
+        title: String,
+        message: String,
+        onClickListener: OnClickListener
     ) = with(activity) {
         runOnUiThread {
-            AlertDialog.Builder(activity).setTitle(title).setMessage(message).setCancelable(false)
-                .setPositiveButton(android.R.string.ok, onClickListener).show()
+            AlertDialog.Builder(activity)
+                .setTitle(title)
+                .setMessage(message)
+                .setCancelable(false)
+                .setPositiveButton(android.R.string.ok, onClickListener)
+                .show()
         }
     }
 

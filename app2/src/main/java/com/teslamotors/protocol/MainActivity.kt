@@ -208,6 +208,7 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
         if (requestCode != PERMISSION_REQUEST_CODE) return
+
         val containsPermanentDenial = permissions.zip(grantResults.toTypedArray()).any {
             it.second == PackageManager.PERMISSION_DENIED && !ActivityCompat.shouldShowRequestPermissionRationale(
                 this, it.first

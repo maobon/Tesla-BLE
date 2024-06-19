@@ -34,7 +34,7 @@ class MainActivity : AppCompatActivity() {
     private fun checkOverlayPermission() {
         if (!Settings.canDrawOverlays(this)) {
             // send user to the device settings 
-            val myIntent: Intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+            val myIntent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
             startActivity(myIntent)
         }
     }

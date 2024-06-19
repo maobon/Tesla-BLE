@@ -7,6 +7,7 @@ import android.app.Service
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 
@@ -27,9 +28,19 @@ class MyService : Service() {
         else
             startForeground(1, Notification())
 
+        val partClickListener = object : PartClickListener {
+            override fun onTopClick() {
+                Log.i(TAG, "onTopClick: ...")
+            }
+
+            override fun onBottomClick() {
+                Log.i(TAG, "onBottomClick: ...")
+            }
+        }
+
         // create an instance of Window class
         // and display the content on screen
-        val window = Window(this)
+        val window = Window(this, partClickListener)
         window.open()
     }
 
@@ -63,5 +74,9 @@ class MyService : Service() {
             .build()
 
         startForeground(2, notification)
+    }
+
+    companion object {
+        private const val TAG = "MyService"
     }
 }

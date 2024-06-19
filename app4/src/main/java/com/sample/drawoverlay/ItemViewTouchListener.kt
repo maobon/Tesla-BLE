@@ -1,7 +1,6 @@
 package com.sample.drawoverlay
 
 import android.annotation.SuppressLint
-import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
@@ -14,11 +13,10 @@ class ItemViewTouchListener(
     private var x = 0
     private var y = 0
 
-    private var currTime: Long = 0
+    private var actionDownTime: Long = 0
     private val leftTopPoint = IntArray(2)
 
     var mPartListener: PartClickListener? = null
-
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouch(view: View, motionEvent: MotionEvent): Boolean {
@@ -26,8 +24,7 @@ class ItemViewTouchListener(
             MotionEvent.ACTION_DOWN -> {
                 x = motionEvent.rawX.toInt()
                 y = motionEvent.rawY.toInt()
-
-                currTime = System.currentTimeMillis()
+                actionDownTime = System.currentTimeMillis()
             }
 
             MotionEvent.ACTION_MOVE -> {
@@ -50,38 +47,26 @@ class ItemViewTouchListener(
             }
 
             MotionEvent.ACTION_UP -> {
-                // return System.currentTimeMillis() - currTime >= 300
                 // true -> consumption -> not continue
                 // false -> not consume -> continue pass
 
                 view.getLocationOnScreen(leftTopPoint)
                 val yBound = leftTopPoint[1] + view.height / 2
+                val currY = motionEvent.rawY.toInt()
 
-                // val xx = motionEvent.rawX.toInt()
-                val yy = motionEvent.rawY.toInt()
-
-                if (System.currentTimeMillis() - currTime < 300) {
-                    Log.d(TAG, "onTouch: click event")
-
-                    if (yy < yBound) {
-                        Log.d(TAG, "onTouch: 1111111111111")
+                if (System.currentTimeMillis() - actionDownTime < 300) {
+                    // click event
+                    if (currY < yBound) {
+                        // Top part
                         mPartListener?.onTopClick()
-
                     } else {
-                        Log.d(TAG, "onTouch: 222222222222222")
+                        // bottom part
                         mPartListener?.onBottomClick()
                     }
-
-
                     return false
                 }
             }
-
-            else -> {
-                return true
-            }
         }
-
         return true
     }
 

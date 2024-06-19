@@ -38,8 +38,7 @@ class MyService : Service() {
             }
         }
 
-        // create an instance of Window class
-        // and display the content on screen
+        // create an instance of Window class and display the content on screen
         val window = Window(this, partClickListener)
         window.open()
     }
@@ -50,19 +49,19 @@ class MyService : Service() {
     @RequiresApi(Build.VERSION_CODES.O)
     private fun startMyOwnForeground() {
 
-        val NOTIFICATION_CHANNEL_ID = "example.permanence"
+        val channelId = "example.permanence"
         val channelName = "Background Service"
 
-        val chan = NotificationChannel(
-            NOTIFICATION_CHANNEL_ID,
+        val notificationChannel = NotificationChannel(
+            channelId,
             channelName,
             NotificationManager.IMPORTANCE_MIN
         )
 
-        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        manager.createNotificationChannel(chan)
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(notificationChannel)
 
-        val notificationBuilder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+        val notificationBuilder = NotificationCompat.Builder(this, channelId)
         val notification: Notification = notificationBuilder.setOngoing(true)
             .setContentTitle("Service running")
             .setContentText("Displaying over other apps") // this is important, otherwise the notification will show the way

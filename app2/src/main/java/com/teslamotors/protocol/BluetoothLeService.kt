@@ -187,9 +187,11 @@ class BluetoothLeService : Service() {
         val partClickListener = object : PartClickListener {
             override fun onTopClick() {
                 Log.i(TAG, "onTopClick: ...")
+                openPassengerDoor(true)
             }
             override fun onBottomClick() {
                 Log.i(TAG, "onBottomClick: ...")
+                openPassengerDoor(false)
             }
         }
 

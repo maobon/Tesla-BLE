@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Message
 import android.os.Messenger
 import android.util.Log
+import android.util.TypedValue
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import java.nio.ByteBuffer
@@ -159,5 +160,19 @@ fun sendMessage(messenger: Messenger?, action: Int, obj: Any? = null) {
         messenger.send(this)
     }
 }
+
+// Foreground Service
+const val CHANNEL_ID = "com.sample.drawoverlay.id"
+const val CHANNEL_NAME = "com.sample.drawoverlay"
+
+const val SERVICE_ACTION_STOP = "com.sample.drawoverlay.stop.service"
+
+fun Context.toPx(dp: Int): Float = TypedValue.applyDimension(
+    TypedValue.COMPLEX_UNIT_DIP,
+    dp.toFloat(),
+    resources.displayMetrics
+)
+
+
 
 

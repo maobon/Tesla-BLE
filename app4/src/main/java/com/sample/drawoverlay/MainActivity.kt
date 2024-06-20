@@ -5,15 +5,27 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.appcompat.app.AppCompatActivity
+import com.sample.drawoverlay.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var rootView: ActivityMainBinding
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+
+        rootView = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(rootView.root)
 
         checkOverlayPermission()
         startService()
+
+        rootView.tvStop.setOnClickListener {
+            Intent(this@MainActivity, MyService::class.java).let {
+                it.action = SERVICE_ACTION_STOP
+                startService(it)
+            }
+        }
     }
 
     // method for starting the service 

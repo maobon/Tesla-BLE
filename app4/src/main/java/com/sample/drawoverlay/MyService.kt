@@ -14,6 +14,8 @@ import androidx.core.app.NotificationCompat
 
 class MyService : Service() {
 
+    private lateinit var window: Window
+
     override fun onBind(intent: Intent): IBinder {
         TODO("Return the communication channel to the service.")
     }
@@ -21,12 +23,12 @@ class MyService : Service() {
     override fun onCreate() {
         super.onCreate()
 
-        // create the custom or default notification
-        // based on the android version
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-            startMyOwnForeground()
-        else
+        // create the custom or default notification based on the android version
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService()
+        } else {
             startForeground(1, Notification())
+        }
 
         val partClickListener = object : PartClickListener {
             override fun onTopClick() {
@@ -39,40 +41,48 @@ class MyService : Service() {
         }
 
         // create an instance of Window class and display the content on screen
-        val window = Window(this, partClickListener)
+        window = Window(this@MyService, partClickListener)
         window.open()
     }
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (SERVICE_ACTION_STOP == intent?.action) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
+        return START_NOT_STICKY
+    }
 
-    // for android version >=O we need to create custom notification stating
-    // foreground service is running
+    // for android version >=O
+    // we need to create custom notification stating foreground service is running
     @RequiresApi(Build.VERSION_CODES.O)
-    private fun startMyOwnForeground() {
+    private fun startForegroundService() {
 
-        val channelId = "example.permanence"
-        val channelName = "Background Service"
-
-        val notificationChannel = NotificationChannel(
-            channelId,
-            channelName,
-            NotificationManager.IMPORTANCE_MIN
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            CHANNEL_NAME,
+            NotificationManager.IMPORTANCE_HIGH
         )
 
-        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.createNotificationChannel(notificationChannel)
+        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        manager.createNotificationChannel(channel)
 
-        val notificationBuilder = NotificationCompat.Builder(this, channelId)
-        val notification: Notification = notificationBuilder.setOngoing(true)
+        val notificationBuilder = NotificationCompat.Builder(this@MyService, CHANNEL_ID)
+        val notification = notificationBuilder
+            .setOngoing(true)
             .setContentTitle("Service running")
             .setContentText("Displaying over other apps") // this is important, otherwise the notification will show the way
-            // you want i.e. it will show some default notification
-
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setPriority(NotificationManager.IMPORTANCE_MIN)
             .setCategory(Notification.CATEGORY_SERVICE)
             .build()
 
         startForeground(2, notification)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        window.close()
     }
 
     companion object {

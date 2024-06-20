@@ -84,7 +84,7 @@ class Window(
     /**
      * Define the position of the window within the screen set the layout parameters of the window
      */
-    private fun getLayoutParams(w: Int = 150, h: Int = 300): WindowManager.LayoutParams {
+    private fun getLayoutParams(w: Int = 50, h: Int = 100): WindowManager.LayoutParams {
         // Display it on top of other application windows
         return WindowManager.LayoutParams().apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -94,7 +94,7 @@ class Window(
                     layoutInDisplayCutoutMode = //刘海屏延伸到刘海里面
                         WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
                 }
-            } else {
+            } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
                 type = WindowManager.LayoutParams.TYPE_SYSTEM_ALERT
             }
 

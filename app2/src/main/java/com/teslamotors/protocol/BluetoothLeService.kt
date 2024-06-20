@@ -39,6 +39,7 @@ import com.teslamotors.protocol.util.ACTION_AUTHENTICATING
 import com.teslamotors.protocol.util.ACTION_AUTHENTICATING_RESP
 import com.teslamotors.protocol.util.ACTION_CLIENT_MESSENGER
 import com.teslamotors.protocol.util.ACTION_CLOSURES_REQUESTING
+import com.teslamotors.protocol.util.ACTION_CLOSURES_REQUESTING_RESP
 import com.teslamotors.protocol.util.ACTION_CONNECTING
 import com.teslamotors.protocol.util.ACTION_CONNECTING_RESP
 import com.teslamotors.protocol.util.ACTION_EPHEMERAL_KEY_REQUESTING
@@ -116,8 +117,6 @@ class BluetoothLeService : Service() {
                 sendMessage(
                     cMessenger, ACTION_CONNECTING_RESP, "vehicle connected successful"
                 )
-
-                // openOverlay() // todo error
             }
 
             // response to Ac ....
@@ -155,22 +154,21 @@ class BluetoothLeService : Service() {
                     }
 
                     AUTHENTICATING -> {
-                        with(vcsecMsg!!) {
-                            val respCounter = commandStatus.signedMessageStatus.counter
-                            if (respCounter > 100) {
-                                // sendMessage(cMessenger, ACTION_TOAST, "Auth Successfully")
-                                sendMessage(
-                                    cMessenger, ACTION_AUTHENTICATING_RESP, "Auth Successfully"
-                                )
-
-                                // show overlay controller
-                                // this@BluetoothLeService.openOverlay() // todo error
-                            }
+                        Log.d(TAG, "onVehicleResponse: AUTHENTICATING ...")
+                        checkVehicleResponseMessageStatus(vcsecMsg!!) {
+                            sendMessage(
+                                cMessenger, ACTION_AUTHENTICATING_RESP, "Auth Successfully"
+                            )
                         }
                     }
 
                     CLOSURES_REQUESTING -> {
-
+                        Log.d(TAG, "onVehicleResponse: CLOSURES_REQUESTING ...")
+                        checkVehicleResponseMessageStatus(vcsecMsg!!) {
+                            sendMessage(
+                                cMessenger, ACTION_TOAST, "Closures OK"
+                            )
+                        }
                     }
 
                     else -> {}
@@ -192,6 +190,7 @@ class BluetoothLeService : Service() {
                 Log.i(TAG, "onTopClick: ...")
                 openPassengerDoor(true)
             }
+
             override fun onBottomClick() {
                 Log.i(TAG, "onBottomClick: ...")
                 openPassengerDoor(false)
@@ -208,23 +207,19 @@ class BluetoothLeService : Service() {
     private fun startBluetoothForegroundService() {
 
         val channel = NotificationChannel(
-            CHANNEL_ID,
-            CHANNEL_NAME,
-            NotificationManager.IMPORTANCE_HIGH
+            CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH
         )
 
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(channel)
 
         val notificationBuilder = NotificationCompat.Builder(this@BluetoothLeService, CHANNEL_ID)
-        val notification = notificationBuilder
-            .setOngoing(true)
-            .setContentTitle("Tesla Bluetooth Util")
-            .setContentText("Control vehicle doors") // this is important, otherwise the notification will show the way
-            .setSmallIcon(R.drawable.ic_bluetooth)
-            .setPriority(NotificationManager.IMPORTANCE_HIGH)
-            .setCategory(Notification.CATEGORY_SERVICE)
-            .build()
+        val notification =
+            notificationBuilder.setOngoing(true).setContentTitle("Tesla Bluetooth Util")
+                .setContentText("Control vehicle doors") // this is important, otherwise the notification will show the way
+                .setSmallIcon(R.drawable.ic_bluetooth)
+                .setPriority(NotificationManager.IMPORTANCE_HIGH)
+                .setCategory(Notification.CATEGORY_SERVICE).build()
 
         startForeground(2, notification)
     }
@@ -253,6 +248,7 @@ class BluetoothLeService : Service() {
                     if (mScanning) {
                         stopBleScan()
                     }
+
                     connectTargetDevice(result.device)
                 }
             }
@@ -356,7 +352,9 @@ class BluetoothLeService : Service() {
             Log.d(TAG, "stopBleScan: stop scan")
             mScanning = false
             mBluetoothUtil.mScanner.stopScan(mScanCallback)
-            if (sendAction) sendMessage(cMessenger, ACTION_CONNECTING_RESP)
+            if (sendAction) {
+                sendMessage(cMessenger, ACTION_CONNECTING_RESP)
+            }
         }
     }
 
@@ -405,7 +403,28 @@ class BluetoothLeService : Service() {
         mGatt.writeCharacteristic(txCharacteristic, requestMsg, CLOSURES_REQUESTING)
     }
 
-    fun openOverlay(){
+    // real action judge is ERROR or SUCC
+    private fun checkVehicleResponseMessageStatus(
+        resp: vcsec.FromVCSECMessage, onExpected: () -> Unit
+    ) = with(resp) {
+        val errorDesc = commandStatus.operationStatus.name
+        if (errorDesc == "OPERATIONSTATUS_ERROR") {
+            val desc = commandStatus.signedMessageStatus.signedMessageInformation.name
+            Log.d(TAG, "checkVehicleResponseMessageStatus:  .... error desc= $desc")
+            sendMessage(cMessenger, ACTION_CLOSURES_REQUESTING_RESP, desc)
+
+        } else {
+            // succ ...
+            val respCounter = commandStatus.signedMessageStatus.counter
+            if (respCounter > 100) {
+                onExpected.invoke()
+            } else {
+                Log.d(TAG, "checkVehicleResponseMessageStatus: counter error")
+            }
+        }
+    }
+
+    fun openOverlay() {
         mOverlayController.openOverlay()
     }
 

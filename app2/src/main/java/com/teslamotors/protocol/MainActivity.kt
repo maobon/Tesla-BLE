@@ -88,8 +88,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 ACTION_CONNECTING_RESP -> {
-                    Log.d(TAG, "handleMessage: ACTION_CONNECTING_RESP ...")
-                    Log.d(TAG, "handleMessage: Thread check= ${Thread.currentThread().name}")
+                    Log.d(TAG, "Tesla Bluetooth LE connected!!")
 
                     // 1. scan and connect result
                     if (msg.obj != null) {
@@ -108,18 +107,13 @@ class MainActivity : AppCompatActivity() {
                         activity.rootView.btnTest2.visibility = View.VISIBLE
                     }
 
-                    // 4. post notification
-                    // activity.mNotificationUtils.postNotification()
+                    // 4 show overlay controller
                     sendMessage(activity.sMessenger, ACTION_OVERLAY_CONTROLLER_SHOW)
                 }
 
-                ACTION_KEY_TO_WHITELIST_ADDING_RESP -> {
+                ACTION_KEY_TO_WHITELIST_ADDING_RESP -> {}
 
-                }
-
-                ACTION_EPHEMERAL_KEY_REQUESTING_RESP -> {
-
-                }
+                ACTION_EPHEMERAL_KEY_REQUESTING_RESP -> {}
 
                 ACTION_AUTHENTICATING_RESP -> {
                     Log.d(TAG, "handleMessage: MainAc received authenticate result ...")
@@ -128,15 +122,24 @@ class MainActivity : AppCompatActivity() {
                     // change some ui
                     activity.rootView.btnTest5.visibility = View.VISIBLE
                     activity.rootView.btnTest2.visibility = View.INVISIBLE
+
+                    // show overlay controller
+                    sendMessage(activity.sMessenger, ACTION_OVERLAY_CONTROLLER_SHOW)
                 }
 
                 ACTION_CLOSURES_REQUESTING_RESP -> {
+                    Log.d(TAG, "AC received closures control response")
+                    if (msg.obj != null) {
+                        val status = msg.obj as String
+                        if (!TextUtils.isEmpty(status))
+                            activity.rootView.tvConnectStatus.text = status
+                    }
+
 
                 }
             }
         }
     }
-
 
     @SuppressLint("NewApi")
     @RequiresApi(Build.VERSION_CODES.S)

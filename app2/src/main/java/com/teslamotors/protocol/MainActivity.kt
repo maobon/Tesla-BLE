@@ -51,7 +51,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var rootView: ActivityMainBinding
     private lateinit var mBluetoothUtil: BluetoothUtil
-    // private lateinit var mNotificationUtils: NotificationUtils
 
     private var sMessenger: Messenger? = null
     private val mClientHandler by lazy {
@@ -120,6 +119,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 ACTION_AUTHENTICATING_RESP -> {
+                    Log.d(TAG, "handleMessage: MainAc received authenticate result ...")
                     activity.createToast(activity, msg.obj as String)
 
                     // change some ui

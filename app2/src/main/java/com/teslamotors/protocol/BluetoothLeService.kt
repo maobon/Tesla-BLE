@@ -107,13 +107,11 @@ class BluetoothLeService : Service() {
                 txCharacteristic = tx
                 rxCharacteristic = rx
 
-                // xiaomi using for test
-                // mGatt.enableNotifications(rx, XIAOMI_ENV_SENSOR_CCC_DESCRIPTOR_UUID)
-
                 // tesla enable notification
                 mGatt.enableNotifications(rx, TESLA_RX_CHARACTERISTIC_DESCRIPTOR_UUID)
 
-                // connect process completed .... !!
+                // connect process completed ....
+                // todo .... connection established ....
                 sendMessage(
                     cMessenger, ACTION_CONNECTING_RESP, "vehicle connected successful"
                 )
@@ -161,6 +159,9 @@ class BluetoothLeService : Service() {
                                 sendMessage(
                                     cMessenger, ACTION_AUTHENTICATING_RESP, "Auth Successfully"
                                 )
+
+                                // show overlay controller
+                                mOverlayController.openOverlay()
                             }
                         }
                     }
@@ -173,7 +174,6 @@ class BluetoothLeService : Service() {
                 }
             }
         })
-
     }
 
     private fun elevatePrivileges() {
@@ -197,7 +197,6 @@ class BluetoothLeService : Service() {
 
         // create an instance of Window class and display the content on screen
         mOverlayController = OverlayController(this@BluetoothLeService, partClickListener)
-        mOverlayController.openOverlay()
     }
 
     // for android version >=O
@@ -239,18 +238,6 @@ class BluetoothLeService : Service() {
             Log.d(TAG, "onScanResult: find a Tesla")
             Log.i(TAG, "BLE scan result: bytes=${JUtils.bytesToHex(result.scanRecord?.bytes)}")
 
-            // val manufacturerData: SparseArray<ByteArray>? = result.scanRecord?.manufacturerSpecificData
-            // manufacturerData?.forEach { key, value ->
-            //     if (key == 76) { /*0x004c is apple company id*/ }
-            // }
-
-            // normal ble device is ok
-            // Log.d(TAG, "connecting!!! ---> : ${device.name} + ${device.address}")
-            // if (mScanning) {
-            //     stopBleScan()
-            // }
-            // connectTargetDevice(device)
-
             // Tesla iBeacon protocol
             // get complete local name from advertising data
             result.scanRecord?.advertisingDataMap?.get(9).let {
@@ -259,9 +246,10 @@ class BluetoothLeService : Service() {
 
                 if (TESLA_BLUETOOTH_BEACON_LOCAL_NAME.equals(localName)) {
                     Log.d(TAG, "onScanResult: === FIND MY CAR ===")
-                    // sendMessage(cMessenger, ACTION_TOAST, "Find my car")
 
-                    if (mScanning) stopBleScan()
+                    if (mScanning) {
+                        stopBleScan()
+                    }
                     connectTargetDevice(result.device)
                 }
             }
@@ -310,19 +298,6 @@ class BluetoothLeService : Service() {
         return START_NOT_STICKY
     }
 
-    // normal notification control
-    // override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-    //     when (intent?.action) {
-    //         ACTION_OPEN_FRONT_PASSENGER_DOOR -> {
-    //             openPassengerDoor(true)
-    //         }
-    //         ACTION_OPEN_REAR_PASSENGER_DOOR -> {
-    //             openPassengerDoor(false)
-    //         }
-    //     }
-    //     return super.onStartCommand(intent, flags, startId)
-    // }
-
     override fun onBind(intent: Intent): IBinder {
         return Messenger(mServiceHandler).binder
     }
@@ -336,9 +311,6 @@ class BluetoothLeService : Service() {
             stopBleScan()
         } else {
             mScanning = true
-
-            // xiaomi using for test
-            // val scanFilter = ScanFilter.Builder().setDeviceName(XIAOMI_MIJIA_SENSOR_NAME).build()
 
             // tesla
             val filters = mutableListOf<ScanFilter>().apply {

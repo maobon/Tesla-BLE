@@ -93,7 +93,4 @@ class OverlayController(
         }
     }
 
-    companion object {
-        private const val TAG = "Window"
-    }
 }

@@ -5,7 +5,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 
-class ItemViewTouchListener(
+class ChildViewTouchListener(
     private val layoutParams: WindowManager.LayoutParams,
     private val windowManager: WindowManager
 ) : View.OnTouchListener {

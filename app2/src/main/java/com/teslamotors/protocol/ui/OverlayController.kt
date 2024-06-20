@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Context.WINDOW_SERVICE
 import android.graphics.PixelFormat
 import android.os.Build
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,74 +11,57 @@ import android.view.WindowManager
 import com.teslamotors.protocol.R
 import com.teslamotors.protocol.util.toPx
 
-class Window(
+class OverlayController(
     private val context: Context,
     partClickListener: PartClickListener? = null
 ) {
-    private val mView: View
-    private var mParams: WindowManager.LayoutParams? = null
+    private val mFloatBallView: View
 
     // WindowManager
-    private val windowManager: WindowManager =
-        context.getSystemService(WINDOW_SERVICE) as WindowManager
+    private val wm: WindowManager = context.getSystemService(WINDOW_SERVICE) as WindowManager
 
     // LayoutInflater
-    private val layoutInflater: LayoutInflater =
+    private val inflater: LayoutInflater =
         context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
 
     init {
         // inflating the view with the custom layout we created
-        mView = layoutInflater.inflate(R.layout.cust_window, null)
+        mFloatBallView = inflater.inflate(R.layout.cust_window, null)
 
-        // val outMetrics = DisplayMetrics()
-        // mWindowManager.defaultDisplay.getMetrics(outMetrics)
-
-        mParams = getLayoutParams()
-
-        val touchListener = ItemViewTouchListener(mParams!!, windowManager)
+        val touchListener = ChildViewTouchListener(getLayoutParams(), wm)
         touchListener.mPartListener = partClickListener
 
-        mView.setOnTouchListener(touchListener)
-
-        // click event will set new onTouchListener ...
-        // child view of ViewGroup can not use setOnClickListener
-        // mView.findViewById<ImageView>(R.id.iv_1).setOnClickListener {
-        //     Log.d(TAG, "image view - 1 is clicked")
-        // }
-        // mView.findViewById<ImageView>(R.id.iv_2).setOnClickListener {
-        //     Log.d(TAG, "image view - 2 is clicked")
-        // }
+        mFloatBallView.setOnTouchListener(touchListener)
     }
 
-    fun open() {
+    fun openOverlay() {
         try {
             // check if the view is already inflated or present in the window
-            if (mView.windowToken == null) {
-                if (mView.parent == null) {
-                    windowManager.addView(mView, mParams)
+            if (mFloatBallView.windowToken == null) {
+                if (mFloatBallView.parent == null) {
+                    wm.addView(mFloatBallView, getLayoutParams())
                 }
             }
         } catch (e: Exception) {
-            Log.d("Error1", e.toString())
+            e.printStackTrace()
         }
     }
 
-    fun close() {
+    fun closeOverlay() {
         try {
             // remove the view from the window
-            windowManager.removeView(mView)
+            wm.removeView(mFloatBallView)
             // invalidate the view
-            mView.invalidate()
+            mFloatBallView.invalidate()
+
             // remove all views
-            (mView.parent as ViewGroup).removeAllViews()
+            (mFloatBallView.parent as ViewGroup).removeAllViews()
 
             // the above steps are necessary when you are adding and removing the view
             // simultaneously, it might give some exceptions
 
-            Log.d(TAG, "test print log")
-
         } catch (e: Exception) {
-            Log.d("Error2", e.toString())
+            e.printStackTrace()
         }
     }
 

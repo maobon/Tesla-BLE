@@ -1,5 +1,8 @@
 package com.teslamotors.protocol
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.Service
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
@@ -17,6 +20,7 @@ import android.os.Message
 import android.os.Messenger
 import android.util.Log
 import androidx.annotation.RequiresApi
+import androidx.core.app.NotificationCompat
 import com.teslamotors.protocol.ble.BluetoothUtil
 import com.teslamotors.protocol.ble.ConnectionStateListener
 import com.teslamotors.protocol.ble.GattCallback
@@ -29,6 +33,7 @@ import com.teslamotors.protocol.msg.key.AddKeyToWhiteListRequest
 import com.teslamotors.protocol.msg.key.AddKeyVehicleResponse
 import com.teslamotors.protocol.msg.key.EphemeralKeyRequest
 import com.teslamotors.protocol.msg.key.EphemeralKeyVehicleResponse
+import com.teslamotors.protocol.ui.OverlayController
 import com.teslamotors.protocol.util.ACTION_AUTHENTICATING
 import com.teslamotors.protocol.util.ACTION_AUTHENTICATING_RESP
 import com.teslamotors.protocol.util.ACTION_CLIENT_MESSENGER
@@ -37,14 +42,15 @@ import com.teslamotors.protocol.util.ACTION_CONNECTING
 import com.teslamotors.protocol.util.ACTION_CONNECTING_RESP
 import com.teslamotors.protocol.util.ACTION_EPHEMERAL_KEY_REQUESTING
 import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING
-import com.teslamotors.protocol.util.ACTION_OPEN_FRONT_PASSENGER_DOOR
-import com.teslamotors.protocol.util.ACTION_OPEN_REAR_PASSENGER_DOOR
 import com.teslamotors.protocol.util.ACTION_TOAST
+import com.teslamotors.protocol.util.CHANNEL_ID
+import com.teslamotors.protocol.util.CHANNEL_NAME
 import com.teslamotors.protocol.util.JUtils
 import com.teslamotors.protocol.util.Operations.AUTHENTICATING
 import com.teslamotors.protocol.util.Operations.CLOSURES_REQUESTING
 import com.teslamotors.protocol.util.Operations.EPHEMERAL_KEY_REQUESTING
 import com.teslamotors.protocol.util.Operations.KEY_TO_WHITELIST_ADDING
+import com.teslamotors.protocol.util.SERVICE_ACTION_STOP
 import com.teslamotors.protocol.util.TESLA_BLUETOOTH_BEACON_LOCAL_NAME
 import com.teslamotors.protocol.util.TESLA_RX_CHARACTERISTIC_DESCRIPTOR_UUID
 import com.teslamotors.protocol.util.countAutoIncrement
@@ -56,6 +62,8 @@ import com.teslamotors.protocol.util.useSharedKey
 class BluetoothLeService : Service() {
 
     private var mScanning = false
+
+    private lateinit var mOverlayController: OverlayController
 
     // real control instance
     private lateinit var mGatt: GattUtil
@@ -81,6 +89,7 @@ class BluetoothLeService : Service() {
         super.onCreate()
 
         initKeystore()
+        elevatePrivileges()
 
         mGattCallback = GattCallback(object : ConnectionStateListener {
             override fun onConnected(gatt: BluetoothGatt) {
@@ -163,6 +172,56 @@ class BluetoothLeService : Service() {
                 }
             }
         })
+
+    }
+
+    private fun elevatePrivileges() {
+        // create the custom or default notification based on the android version
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startBluetoothForegroundService()
+        } else {
+            startForeground(1, Notification())
+        }
+
+        // val partClickListener = object : PartClickListener {
+        //     override fun onTopClick() {
+        //         Log.i(TAG, "onTopClick: ...")
+        //     }
+        //     override fun onBottomClick() {
+        //         Log.i(TAG, "onBottomClick: ...")
+        //     }
+        // }
+
+        // create an instance of Window class and display the content on screen
+        mOverlayController = OverlayController(this@BluetoothLeService)
+        mOverlayController.openOverlay()
+    }
+
+    // for android version >=O
+    // we need to create custom notification stating foreground service is running
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun startBluetoothForegroundService() {
+
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            CHANNEL_NAME,
+            NotificationManager.IMPORTANCE_HIGH
+        )
+
+        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        manager.createNotificationChannel(channel)
+
+        val notificationBuilder = NotificationCompat.Builder(this@BluetoothLeService, CHANNEL_ID)
+        val notification = notificationBuilder
+            .setOngoing(true)
+            .setContentTitle("Tesla Bluetooth Util")
+            .setContentText("Control vehicle doors") // this is important, otherwise the notification will show the way
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setPriority(NotificationManager.IMPORTANCE_MIN)
+            .setCategory(Notification.CATEGORY_SERVICE)
+            .build()
+
+        startForeground(2, notification)
     }
 
     @RequiresApi(Build.VERSION_CODES.S)
@@ -241,18 +300,25 @@ class BluetoothLeService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
-            ACTION_OPEN_FRONT_PASSENGER_DOOR -> {
-                openPassengerDoor(true)
-            }
-
-            ACTION_OPEN_REAR_PASSENGER_DOOR -> {
-                openPassengerDoor(false)
-            }
+        if (SERVICE_ACTION_STOP == intent?.action) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
         }
-
-        return super.onStartCommand(intent, flags, startId)
+        return START_NOT_STICKY
     }
+
+    // normal notification control
+    // override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    //     when (intent?.action) {
+    //         ACTION_OPEN_FRONT_PASSENGER_DOOR -> {
+    //             openPassengerDoor(true)
+    //         }
+    //         ACTION_OPEN_REAR_PASSENGER_DOOR -> {
+    //             openPassengerDoor(false)
+    //         }
+    //     }
+    //     return super.onStartCommand(intent, flags, startId)
+    // }
 
     override fun onBind(intent: Intent): IBinder {
         return Messenger(mServiceHandler).binder
@@ -353,8 +419,12 @@ class BluetoothLeService : Service() {
         mGatt.writeCharacteristic(txCharacteristic, requestMsg, CLOSURES_REQUESTING)
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        mOverlayController.closeOverlay()
+    }
+
     private companion object {
         private const val TAG = "BluetoothLeService"
     }
-
 }

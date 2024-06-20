@@ -39,7 +39,6 @@ import com.teslamotors.protocol.util.ACTION_EPHEMERAL_KEY_REQUESTING_RESP
 import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING
 import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING_RESP
 import com.teslamotors.protocol.util.ACTION_TOAST
-import com.teslamotors.protocol.util.NotificationUtils
 import com.teslamotors.protocol.util.createToast
 import com.teslamotors.protocol.util.hasPermission
 import com.teslamotors.protocol.util.hasRequiredBluetoothPermissions
@@ -51,7 +50,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var rootView: ActivityMainBinding
     private lateinit var mBluetoothUtil: BluetoothUtil
-    private lateinit var mNotificationUtils: NotificationUtils
+    // private lateinit var mNotificationUtils: NotificationUtils
 
     private var sMessenger: Messenger? = null
     private val mClientHandler by lazy {
@@ -108,7 +107,7 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     // 4. post notification
-                    activity.mNotificationUtils.postNotification()
+                    // activity.mNotificationUtils.postNotification()
                 }
 
                 ACTION_KEY_TO_WHITELIST_ADDING_RESP -> {
@@ -143,7 +142,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(rootView.root)
 
         mBluetoothUtil = BluetoothUtil(this@MainActivity)
-        mNotificationUtils = NotificationUtils(this@MainActivity)
+        // mNotificationUtils = NotificationUtils(this@MainActivity)
 
         // scan and connect to vehicle
         rootView.btnTest1.setOnClickListener {

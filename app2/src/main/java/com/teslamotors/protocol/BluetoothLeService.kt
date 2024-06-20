@@ -34,6 +34,7 @@ import com.teslamotors.protocol.msg.key.AddKeyVehicleResponse
 import com.teslamotors.protocol.msg.key.EphemeralKeyRequest
 import com.teslamotors.protocol.msg.key.EphemeralKeyVehicleResponse
 import com.teslamotors.protocol.ui.OverlayController
+import com.teslamotors.protocol.ui.PartClickListener
 import com.teslamotors.protocol.util.ACTION_AUTHENTICATING
 import com.teslamotors.protocol.util.ACTION_AUTHENTICATING_RESP
 import com.teslamotors.protocol.util.ACTION_CLIENT_MESSENGER
@@ -183,17 +184,17 @@ class BluetoothLeService : Service() {
             startForeground(1, Notification())
         }
 
-        // val partClickListener = object : PartClickListener {
-        //     override fun onTopClick() {
-        //         Log.i(TAG, "onTopClick: ...")
-        //     }
-        //     override fun onBottomClick() {
-        //         Log.i(TAG, "onBottomClick: ...")
-        //     }
-        // }
+        val partClickListener = object : PartClickListener {
+            override fun onTopClick() {
+                Log.i(TAG, "onTopClick: ...")
+            }
+            override fun onBottomClick() {
+                Log.i(TAG, "onBottomClick: ...")
+            }
+        }
 
         // create an instance of Window class and display the content on screen
-        mOverlayController = OverlayController(this@BluetoothLeService)
+        mOverlayController = OverlayController(this@BluetoothLeService, partClickListener)
         mOverlayController.openOverlay()
     }
 

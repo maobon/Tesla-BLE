@@ -16,6 +16,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.Message
 import android.os.Messenger
+import android.provider.Settings
 import android.text.TextUtils
 import android.util.Log
 import android.view.View
@@ -188,15 +189,18 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
 
+        if (!mBluetoothUtil.isBluetoothEnable()) {
+            promptEnableBluetooth()
+        }
+
+        checkOverlayPermission()
+        startService()
+
         bindService(
             Intent(this@MainActivity, BluetoothLeService::class.java),
             mServiceConnImpl,
             Context.BIND_AUTO_CREATE
         )
-
-        if (!mBluetoothUtil.isBluetoothEnable()) {
-            promptEnableBluetooth()
-        }
     }
 
     @SuppressLint("NewApi")
@@ -287,6 +291,28 @@ class MainActivity : AppCompatActivity() {
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun requestBluetoothPermissions() {
         DialogUtil.showReqPermissions(DialogUtil.PermissionType.Bluetooth, this)
+    }
+
+    // method to ask user to grant the Overlay permission
+    private fun checkOverlayPermission() {
+        if (!Settings.canDrawOverlays(this)) {
+            // send user to the device settings
+            val myIntent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+            startActivity(myIntent)
+        }
+    }
+
+    // method for starting the service
+    private fun startService() {
+        // check if the user has already granted the Draw over other apps permission
+        if (Settings.canDrawOverlays(this)) {
+            // start the service based on the android version
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(Intent(this, BluetoothLeService::class.java))
+            } else {
+                startService(Intent(this, BluetoothLeService::class.java))
+            }
+        }
     }
 
     override fun onDestroy() {

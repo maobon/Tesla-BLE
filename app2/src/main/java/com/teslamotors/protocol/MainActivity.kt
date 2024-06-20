@@ -39,6 +39,7 @@ import com.teslamotors.protocol.util.ACTION_EPHEMERAL_KEY_REQUESTING
 import com.teslamotors.protocol.util.ACTION_EPHEMERAL_KEY_REQUESTING_RESP
 import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING
 import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING_RESP
+import com.teslamotors.protocol.util.ACTION_OVERLAY_CONTROLLER_SHOW
 import com.teslamotors.protocol.util.ACTION_TOAST
 import com.teslamotors.protocol.util.createToast
 import com.teslamotors.protocol.util.hasPermission
@@ -88,6 +89,7 @@ class MainActivity : AppCompatActivity() {
 
                 ACTION_CONNECTING_RESP -> {
                     Log.d(TAG, "handleMessage: ACTION_CONNECTING_RESP ...")
+                    Log.d(TAG, "handleMessage: Thread check= ${Thread.currentThread().name}")
 
                     // 1. scan and connect result
                     if (msg.obj != null) {
@@ -108,6 +110,7 @@ class MainActivity : AppCompatActivity() {
 
                     // 4. post notification
                     // activity.mNotificationUtils.postNotification()
+                    sendMessage(activity.sMessenger, ACTION_OVERLAY_CONTROLLER_SHOW)
                 }
 
                 ACTION_KEY_TO_WHITELIST_ADDING_RESP -> {

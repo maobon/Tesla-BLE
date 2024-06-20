@@ -43,6 +43,7 @@ import com.teslamotors.protocol.util.ACTION_CONNECTING
 import com.teslamotors.protocol.util.ACTION_CONNECTING_RESP
 import com.teslamotors.protocol.util.ACTION_EPHEMERAL_KEY_REQUESTING
 import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING
+import com.teslamotors.protocol.util.ACTION_OVERLAY_CONTROLLER_SHOW
 import com.teslamotors.protocol.util.ACTION_TOAST
 import com.teslamotors.protocol.util.CHANNEL_ID
 import com.teslamotors.protocol.util.CHANNEL_NAME
@@ -115,6 +116,8 @@ class BluetoothLeService : Service() {
                 sendMessage(
                     cMessenger, ACTION_CONNECTING_RESP, "vehicle connected successful"
                 )
+
+                // openOverlay() // todo error
             }
 
             // response to Ac ....
@@ -161,7 +164,7 @@ class BluetoothLeService : Service() {
                                 )
 
                                 // show overlay controller
-                                mOverlayController.openOverlay()
+                                // this@BluetoothLeService.openOverlay() // todo error
                             }
                         }
                     }
@@ -267,6 +270,9 @@ class BluetoothLeService : Service() {
         )
     }
 
+    /**
+     * Service Handler
+     */
     internal class ServiceHandler(
         private val service: BluetoothLeService
     ) : Handler(Looper.getMainLooper()) {
@@ -283,8 +289,13 @@ class BluetoothLeService : Service() {
                 ACTION_AUTHENTICATING -> service.authenticate()
 
                 ACTION_CLOSURES_REQUESTING -> {
+                    Log.d(TAG, "handleMessage: check thread=${Thread.currentThread().name}")
                     val isFront = if (msg.obj == null) false else msg.obj as Boolean
                     service.openPassengerDoor(isFront)
+                }
+
+                ACTION_OVERLAY_CONTROLLER_SHOW -> {
+                    service.openOverlay()
                 }
             }
         }
@@ -392,6 +403,10 @@ class BluetoothLeService : Service() {
 
         val requestMsg = ClosuresRequest().perform(this, sharedKey, countAutoIncrement(), isFront)
         mGatt.writeCharacteristic(txCharacteristic, requestMsg, CLOSURES_REQUESTING)
+    }
+
+    fun openOverlay(){
+        mOverlayController.openOverlay()
     }
 
     override fun onDestroy() {

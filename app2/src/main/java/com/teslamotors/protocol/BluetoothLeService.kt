@@ -218,8 +218,8 @@ class BluetoothLeService : Service() {
             .setOngoing(true)
             .setContentTitle("Tesla Bluetooth Util")
             .setContentText("Control vehicle doors") // this is important, otherwise the notification will show the way
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setPriority(NotificationManager.IMPORTANCE_MIN)
+            .setSmallIcon(R.drawable.ic_bluetooth)
+            .setPriority(NotificationManager.IMPORTANCE_HIGH)
             .setCategory(Notification.CATEGORY_SERVICE)
             .build()
 

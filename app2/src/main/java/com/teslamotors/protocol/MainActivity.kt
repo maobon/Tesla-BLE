@@ -139,11 +139,11 @@ class MainActivity : AppCompatActivity() {
     @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         rootView = ActivityMainBinding.inflate(layoutInflater)
         setContentView(rootView.root)
 
         mBluetoothUtil = BluetoothUtil(this@MainActivity)
-        // mNotificationUtils = NotificationUtils(this@MainActivity)
 
         // scan and connect to vehicle
         rootView.btnTest1.setOnClickListener {

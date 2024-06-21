@@ -41,6 +41,7 @@ import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING
 import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING_RESP
 import com.teslamotors.protocol.util.ACTION_OVERLAY_CONTROLLER_SHOW
 import com.teslamotors.protocol.util.ACTION_TOAST
+import com.teslamotors.protocol.util.STATUS_CODE_OK
 import com.teslamotors.protocol.util.createToast
 import com.teslamotors.protocol.util.hasPermission
 import com.teslamotors.protocol.util.hasRequiredBluetoothPermissions
@@ -87,28 +88,31 @@ class MainActivity : AppCompatActivity() {
                     activity.createToast(activity, msg.obj as String)
                 }
 
+                // Bluetooth Connection Status ....
                 ACTION_CONNECTING_RESP -> {
-                    Log.d(TAG, "Tesla Bluetooth LE connected!!")
+                    Log.d(TAG, "handleMessage: Ac received from Service")
+                    var ret = "Connected Failed"
+                    activity.apply {
+                        // 1. scan and connect result
+                        if (msg.obj != null) {
+                            val status = msg.obj as String
+                            if (!TextUtils.isEmpty(status)) ret = status
+                        }
+                        rootView.tvConnectStatus.text = ret
 
-                    // 1. scan and connect result
-                    if (msg.obj != null) {
-                        val status = msg.obj as String
-                        if (!TextUtils.isEmpty(status))
-                            activity.rootView.tvConnectStatus.text = status
+                        // 2. release button status
+                        rootView.btnTest1.isEnabled = true
+
+                        // 3 ... some ui control
+                        if (msg.arg1 == STATUS_CODE_OK && (useSharedKey()?.isNotEmpty() == true)) {
+                            rootView.btnTest5.visibility = View.VISIBLE
+                            // 4 show overlay controller
+                            sendMessage(sMessenger, ACTION_OVERLAY_CONTROLLER_SHOW)
+                        } else {
+                            rootView.btnTest2.visibility =
+                                if (msg.arg1 == STATUS_CODE_OK) View.VISIBLE else View.INVISIBLE
+                        }
                     }
-
-                    // 2. release button status
-                    activity.rootView.btnTest1.isEnabled = true
-
-                    // 3 ... some ui control
-                    if (activity.useSharedKey() != null) {
-                        activity.rootView.btnTest5.visibility = View.VISIBLE
-                    } else {
-                        activity.rootView.btnTest2.visibility = View.VISIBLE
-                    }
-
-                    // 4 show overlay controller
-                    sendMessage(activity.sMessenger, ACTION_OVERLAY_CONTROLLER_SHOW)
                 }
 
                 ACTION_KEY_TO_WHITELIST_ADDING_RESP -> {}
@@ -131,8 +135,8 @@ class MainActivity : AppCompatActivity() {
                     Log.d(TAG, "AC received closures control response")
                     if (msg.obj != null) {
                         val status = msg.obj as String
-                        if (!TextUtils.isEmpty(status))
-                            activity.rootView.tvConnectStatus.text = status
+                        if (!TextUtils.isEmpty(status)) activity.rootView.tvConnectStatus.text =
+                            status
                     }
 
 

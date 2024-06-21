@@ -27,7 +27,6 @@ class GattCallback(
                 Log.w(TAG, "Successfully connected to $deviceAddress")
 
                 // stash BluetoothGatt instance ...
-                // mBluetoothGatt = gatt
                 mStatusListener.onConnected(gatt)
 
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
@@ -37,6 +36,9 @@ class GattCallback(
 
         } else {
             Log.w(TAG, "Error $status encountered for $deviceAddress! Disconnecting...")
+            mStatusListener.onError(
+                GattErrorType.ERR_CONNECTION_STATUS_CHANGE, status, "connection failed"
+            )
             gatt.close()
         }
     }
@@ -49,13 +51,6 @@ class GattCallback(
             printGattTable()
             // Consider connection setup as complete here
 
-            // xiaomi using for test
-            // val xiaomiService = getService(XIAOMI_ENV_SENSOR_SERVICE_UUID)
-            // val xiaomiCharacteristic = xiaomiService.run {
-            //     getCharacteristic(XIAOMI_ENV_SENSOR_CHARACTERISTIC_UUID)
-            // }
-            // mStatusListener.onGetCharacteristics(xiaomiCharacteristic, xiaomiCharacteristic)
-
             // tesla
             val teslaService = getService(TESLA_SERVICE_UUID)
             val characteristicTx = teslaService.run {
@@ -64,6 +59,16 @@ class GattCallback(
             val characteristicRx = teslaService.run {
                 getCharacteristic(TESLA_RX_CHARACTERISTIC_UUID)
             }
+
+            if (teslaService == null || characteristicTx == null || characteristicRx == null) {
+                Log.e(TAG, "onServicesDiscovered: Tesla BLE Service or Characteristic is null")
+                mStatusListener.onError(
+                    GattErrorType.ERR_SERVICES_DISCOVERY,
+                    desc = "Tesla BLE Service or Characteristic is null"
+                )
+                return
+            }
+
             mStatusListener.onGetCharacteristics(characteristicTx, characteristicRx)
         }
     }
@@ -86,6 +91,11 @@ class GattCallback(
 
                 else -> {
                     Log.e(TAG, "Characteristic read failed for $uuid, error: $status")
+                    mStatusListener.onError(
+                        GattErrorType.ERR_CHARACTERISTIC_READ,
+                        status,
+                        "characteristic read error (deprecation)"
+                    )
                 }
             }
         }
@@ -110,6 +120,9 @@ class GattCallback(
 
             else -> {
                 Log.e(TAG, "Characteristic read failed for $uuid, error: $status")
+                mStatusListener.onError(
+                    GattErrorType.ERR_CHARACTERISTIC_READ, status, "characteristic read error"
+                )
             }
         }
     }
@@ -120,7 +133,14 @@ class GattCallback(
         gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic
     ) {
         with(characteristic) {
-            Log.i(TAG, "Characteristic $uuid changed | value: ${value.toHexString()}")
+            if (value == null || value.isEmpty()) {
+                mStatusListener.onError(
+                    GattErrorType.ERR_CHARACTERISTIC_CHANGE, desc = "received value is null"
+                )
+                return
+            }
+            val hex = value.toHexString()
+            Log.i(TAG, "Characteristic $uuid changed | value: $hex")
             processReceiveMsg(characteristic, value)
         }
     }
@@ -128,9 +148,15 @@ class GattCallback(
     override fun onCharacteristicChanged(
         gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, value: ByteArray
     ) {
-        val newValueHex = value.toHexString()
+        if (value.isEmpty()) {
+            mStatusListener.onError(
+                GattErrorType.ERR_CHARACTERISTIC_CHANGE, desc = "received value is null"
+            )
+            return
+        }
+        val hex = value.toHexString()
         with(characteristic) {
-            Log.i(TAG, "Characteristic $uuid changed | value: $newValueHex")
+            Log.i(TAG, "Characteristic $uuid changed | value: $hex")
             processReceiveMsg(characteristic, value)
         }
     }
@@ -138,15 +164,15 @@ class GattCallback(
     private fun processReceiveMsg(characteristic: BluetoothGattCharacteristic, value: ByteArray) {
         if (characteristic.uuid == TESLA_RX_CHARACTERISTIC_UUID) {
             val fromVCSECMessage: vcsec.FromVCSECMessage? = MessageUtil.autoChaCha(value)
-            Log.d(TAG, "received content from vehicle: processReceiveMsg:$fromVCSECMessage")
-            if (fromVCSECMessage != null)
+            if (fromVCSECMessage != null) {
+                Log.d(TAG, "received content from vehicle:\n$fromVCSECMessage")
                 mStatusListener.onVehicleResponse(fromVCSECMessage)
+            }
+        } else {
+            mStatusListener.onError(
+                GattErrorType.ERR_CHARACTERISTIC_CHANGE, desc = "not Tesla rx characteristic"
+            )
         }
-
-        // xiaomi using for test
-        // else if (characteristic.uuid == XIAOMI_ENV_SENSOR_CHARACTERISTIC_UUID) {
-        //    mStatusListener.onVehicleResponse(value)
-        // }
     }
 
     companion object {

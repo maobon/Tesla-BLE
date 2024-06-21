@@ -1,11 +1,11 @@
-package com.teslamotors.protocol.ble.beacon;
+package com.teslamotors.protocol.ble;
 
 import com.teslamotors.protocol.util.ConstKt;
 import com.teslamotors.protocol.util.ConversionUtils;
 
 import java.util.UUID;
 
-public class TeslaBeacon {
+public class TeslaBeaconFactory {
 
     public static final int MANUFACTURER_ID = 76;
 

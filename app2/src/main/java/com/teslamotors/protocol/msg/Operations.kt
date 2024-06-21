@@ -1,4 +1,4 @@
-package com.teslamotors.protocol.util
+package com.teslamotors.protocol.msg
 
 enum class Operations {
     KEY_TO_WHITELIST_ADDING,

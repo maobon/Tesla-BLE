@@ -24,9 +24,14 @@ import androidx.core.app.NotificationCompat
 import com.teslamotors.protocol.ble.BluetoothUtil
 import com.teslamotors.protocol.ble.ConnectionStateListener
 import com.teslamotors.protocol.ble.GattCallback
+import com.teslamotors.protocol.ble.GattErrorType
 import com.teslamotors.protocol.ble.GattUtil
-import com.teslamotors.protocol.ble.beacon.TeslaBeacon
+import com.teslamotors.protocol.ble.TeslaBeaconFactory
 import com.teslamotors.protocol.keystore.KeyStoreUtils
+import com.teslamotors.protocol.msg.Operations.AUTHENTICATING
+import com.teslamotors.protocol.msg.Operations.CLOSURES_REQUESTING
+import com.teslamotors.protocol.msg.Operations.EPHEMERAL_KEY_REQUESTING
+import com.teslamotors.protocol.msg.Operations.KEY_TO_WHITELIST_ADDING
 import com.teslamotors.protocol.msg.action.AuthRequest
 import com.teslamotors.protocol.msg.action.ClosuresRequest
 import com.teslamotors.protocol.msg.key.AddKeyToWhiteListRequest
@@ -49,11 +54,8 @@ import com.teslamotors.protocol.util.ACTION_TOAST
 import com.teslamotors.protocol.util.CHANNEL_ID
 import com.teslamotors.protocol.util.CHANNEL_NAME
 import com.teslamotors.protocol.util.JUtils
-import com.teslamotors.protocol.util.Operations.AUTHENTICATING
-import com.teslamotors.protocol.util.Operations.CLOSURES_REQUESTING
-import com.teslamotors.protocol.util.Operations.EPHEMERAL_KEY_REQUESTING
-import com.teslamotors.protocol.util.Operations.KEY_TO_WHITELIST_ADDING
 import com.teslamotors.protocol.util.SERVICE_ACTION_STOP
+import com.teslamotors.protocol.util.STATUS_CODE_OK
 import com.teslamotors.protocol.util.TESLA_BLUETOOTH_BEACON_LOCAL_NAME
 import com.teslamotors.protocol.util.TESLA_RX_CHARACTERISTIC_DESCRIPTOR_UUID
 import com.teslamotors.protocol.util.countAutoIncrement
@@ -98,7 +100,7 @@ class BluetoothLeService : Service() {
             override fun onConnected(gatt: BluetoothGatt) {
                 Log.d(TAG, "onConnected: vehicle connected successful ...")
 
-                mGatt = GattUtil(gatt)
+                mGatt = GattUtil(gatt, this)
                 // auto next step discovery services
                 mGatt.discoveryServices()
             }
@@ -115,7 +117,10 @@ class BluetoothLeService : Service() {
                 // connect process completed ....
                 // todo .... connection established ....
                 sendMessage(
-                    cMessenger, ACTION_CONNECTING_RESP, "vehicle connected successful"
+                    cMessenger,
+                    ACTION_CONNECTING_RESP,
+                    "vehicle connected successful",
+                    STATUS_CODE_OK
                 )
             }
 
@@ -174,6 +179,11 @@ class BluetoothLeService : Service() {
                     else -> {}
                 }
             }
+
+            override fun onError(type: GattErrorType, statusCode: Int?, desc: String?) {
+                Log.e(TAG, "onError: AC received ERROR: ${type.name} desc:$desc")
+            }
+
         })
     }
 
@@ -249,6 +259,7 @@ class BluetoothLeService : Service() {
                         stopBleScan()
                     }
 
+                    // connect Tesla vehicle
                     connectTargetDevice(result.device)
                 }
             }
@@ -319,29 +330,31 @@ class BluetoothLeService : Service() {
         } else {
             mScanning = true
 
-            // tesla
+            // create scan filter
             val filters = mutableListOf<ScanFilter>().apply {
                 add(
                     ScanFilter.Builder().setManufacturerData(
-                        TeslaBeacon.MANUFACTURER_ID,
-                        TeslaBeacon.getManufactureData(),
-                        TeslaBeacon.getManufactureDataMask()
+                        TeslaBeaconFactory.MANUFACTURER_ID,
+                        TeslaBeaconFactory.getManufactureData(),
+                        TeslaBeaconFactory.getManufactureDataMask()
                     ).build()
                 )
             }
 
             mBluetoothUtil.mScanner.startScan(filters, getScanSettings(), mScanCallback)
-            countdownTime(15 * 1000)
+            countdownTime(15 * 1000L)
         }
     }
 
     private fun getScanSettings(): ScanSettings {
-        return ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
-            .setReportDelay(0).build()
+        return ScanSettings.Builder()
+            .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
+            .setReportDelay(0)
+            .build()
     }
 
     private fun countdownTime(ms: Long) {
-        Log.d(TAG, "countdownTime: after 15s count down time end")
+        Log.d(TAG, "after 15s bluetooth scan process end")
         Handler(mainLooper).postDelayed({
             stopBleScan(true)
         }, ms)
@@ -352,6 +365,7 @@ class BluetoothLeService : Service() {
             Log.d(TAG, "stopBleScan: stop scan")
             mScanning = false
             mBluetoothUtil.mScanner.stopScan(mScanCallback)
+
             if (sendAction) {
                 sendMessage(cMessenger, ACTION_CONNECTING_RESP)
             }

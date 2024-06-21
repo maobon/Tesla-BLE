@@ -147,15 +147,24 @@ fun Context.requestRelevantRuntimePermissions(belowS: () -> Unit, aboveS: () -> 
 //
 private const val TAG = "Utils"
 
-fun sendMessage(messenger: Messenger?, action: Int, obj: Any? = null) {
+fun sendMessage(
+    messenger: Messenger?,
+    action: Int,
+    obj: Any? = null,
+    statusCode: Int? = null
+) {
     if (messenger == null) {
         Log.d(TAG, "sendMessage: messenger is null")
         return
     }
+
     Message.obtain().apply {
         what = action
         if (obj != null) {
             this.obj = obj
+        }
+        if (statusCode != null) {
+            arg1 = statusCode
         }
         messenger.send(this)
     }

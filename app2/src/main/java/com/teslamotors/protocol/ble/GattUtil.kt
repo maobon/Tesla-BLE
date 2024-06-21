@@ -9,7 +9,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import com.teslamotors.protocol.util.Operations
+import com.teslamotors.protocol.msg.Operations
 import com.teslamotors.protocol.util.isIndicatable
 import com.teslamotors.protocol.util.isNotifiable
 import com.teslamotors.protocol.util.isWritable
@@ -18,7 +18,8 @@ import java.util.*
 
 @SuppressLint("MissingPermission")
 class GattUtil(
-    private val bluetoothGatt: BluetoothGatt?
+    private val bluetoothGatt: BluetoothGatt? = null,
+    private val stateListener: ConnectionStateListener? = null
 ) {
 
     var opera: Operations? = null
@@ -39,11 +40,14 @@ class GattUtil(
 
         val writeType = when {
             characteristic.isWritable() -> BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-            characteristic.isWritableWithoutResponse() -> {
-                BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+            characteristic.isWritableWithoutResponse() -> BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+            else -> {
+                responseErr(
+                    GattErrorType.ERR_INNER_CHARACTERISTIC_WRITE,
+                    "Characteristic ${characteristic.uuid} cannot be written to"
+                )
+                return
             }
-
-            else -> error("Characteristic ${characteristic.uuid} cannot be written to")
         }
 
         bluetoothGatt?.let { gatt ->
@@ -53,7 +57,9 @@ class GattUtil(
                 // Fall back to deprecated version of writeCharacteristic for Android <13
                 gatt.legacyCharacteristicWrite(characteristic, payload, writeType, operations)
             }
-        } ?: error("Not connected to a BLE device!")
+        } ?: responseErr(
+            GattErrorType.ERR_INNER_CHARACTERISTIC_WRITE, "Not connected to a BLE device!"
+        )
     }
 
     @TargetApi(Build.VERSION_CODES.S)
@@ -73,15 +79,13 @@ class GattUtil(
 
     private fun writeDescriptor(descriptor: BluetoothGattDescriptor, payload: ByteArray) {
         bluetoothGatt?.let { gatt ->
-
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 gatt.writeDescriptor(descriptor, payload)
             } else {
                 // Fall back to deprecated version of writeDescriptor for Android <13
                 gatt.legacyDescriptorWrite(descriptor, payload)
             }
-
-        } ?: error("Not connected to a BLE device!")
+        } ?: responseErr(GattErrorType.ERR_INNER_DESCRIPTOR_WRITE, "Not connected to a BLE device!")
     }
 
     @TargetApi(Build.VERSION_CODES.S)
@@ -98,8 +102,8 @@ class GattUtil(
             characteristic.isIndicatable() -> BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
             characteristic.isNotifiable() -> BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
             else -> {
-                Log.e(
-                    "ConnectionManager",
+                responseErr(
+                    GattErrorType.ERR_INNER_NOTIFICATIONS_ENABLE,
                     "${characteristic.uuid} doesn't support notifications/indications"
                 )
                 return
@@ -108,43 +112,48 @@ class GattUtil(
 
         characteristic.getDescriptor(cccdUuid)?.let { cccDescriptor ->
             if (bluetoothGatt?.setCharacteristicNotification(characteristic, true) == false) {
-                Log.e(
-                    "ConnectionManager",
+                responseErr(
+                    GattErrorType.ERR_INNER_NOTIFICATIONS_ENABLE,
                     "setCharacteristicNotification failed for ${characteristic.uuid}"
                 )
                 return
             }
-
             writeDescriptor(cccDescriptor, payload)
-        } ?: Log.e(
-            "ConnectionManager", "${characteristic.uuid} doesn't contain the CCC descriptor!"
+        } ?: responseErr(
+            GattErrorType.ERR_INNER_NOTIFICATIONS_ENABLE,
+            "${characteristic.uuid} doesn't contain the CCC descriptor!"
         )
     }
 
     fun disableNotifications(characteristic: BluetoothGattCharacteristic, cccdUuid: UUID) {
         if (!characteristic.isNotifiable() && !characteristic.isIndicatable()) {
-            Log.e(
-                "ConnectionManager",
+            responseErr(
+                GattErrorType.ERR_INNER_NOTIFICATIONS_DISABLE,
                 "${characteristic.uuid} doesn't support indications/notifications"
             )
             return
         }
-
         characteristic.getDescriptor(cccdUuid)?.let { cccDescriptor ->
             if (bluetoothGatt?.setCharacteristicNotification(characteristic, false) == false) {
-                Log.e(
-                    "ConnectionManager",
+                responseErr(
+                    GattErrorType.ERR_INNER_NOTIFICATIONS_DISABLE,
                     "setCharacteristicNotification failed for ${characteristic.uuid}"
                 )
                 return
             }
             writeDescriptor(cccDescriptor, BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)
-        } ?: Log.e(
-            "ConnectionManager", "${characteristic.uuid} doesn't contain the CCC descriptor!"
+        } ?: responseErr(
+            GattErrorType.ERR_INNER_NOTIFICATIONS_DISABLE,
+            "${characteristic.uuid} doesn't contain the CCC descriptor!"
         )
     }
 
     companion object {
-        private const val TAG = "BluetoothLEUtils"
+        private const val TAG = "GattUtil"
+    }
+
+    private fun responseErr(type: GattErrorType, desc: String? = null) {
+        Log.e(TAG, "errorType: $type desc:$desc")
+        stateListener?.onError(type, desc = desc)
     }
 }

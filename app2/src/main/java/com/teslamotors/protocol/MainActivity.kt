@@ -194,6 +194,14 @@ class MainActivity : AppCompatActivity() {
             sendMessage(sMessenger, ACTION_CLOSURES_REQUESTING, true)
             true
         }
+
+        // ------------------------
+        // real time display vehicle sending data
+        BluetoothLeService.printCheckData.observe(this@MainActivity){
+
+        }
+
+
     }
 
     override fun onResume() {

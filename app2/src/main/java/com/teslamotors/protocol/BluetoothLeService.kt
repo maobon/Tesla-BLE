@@ -21,6 +21,7 @@ import android.os.Messenger
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
+import androidx.lifecycle.MutableLiveData
 import com.teslamotors.protocol.ble.BluetoothUtil
 import com.teslamotors.protocol.ble.ConnectionStateListener
 import com.teslamotors.protocol.ble.GattCallback
@@ -447,7 +448,19 @@ class BluetoothLeService : Service() {
         mOverlayController.closeOverlay()
     }
 
-    private companion object {
+    companion object {
         private const val TAG = "BluetoothLeService"
+
+        val printCheckData by lazy {
+            MutableLiveData<String>().apply {
+                value = ""
+            }
+        }
+    }
+
+    fun displayDataAppendOnAc(data: String) {
+        val builder: StringBuilder = StringBuilder(printCheckData.value!!)
+        builder.append(data)
+        printCheckData.postValue(builder.toString())
     }
 }

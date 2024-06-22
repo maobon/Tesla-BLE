@@ -28,14 +28,12 @@ import com.teslamotors.protocol.ble.BluetoothUtil
 import com.teslamotors.protocol.databinding.ActivityMainBinding
 import com.teslamotors.protocol.ui.DialogUtil
 import com.teslamotors.protocol.ui.DialogUtil.PERMISSION_REQUEST_CODE
-import com.teslamotors.protocol.util.ACTION_AUTHENTICATING
 import com.teslamotors.protocol.util.ACTION_AUTHENTICATING_RESP
 import com.teslamotors.protocol.util.ACTION_CLIENT_MESSENGER
 import com.teslamotors.protocol.util.ACTION_CLOSURES_REQUESTING
 import com.teslamotors.protocol.util.ACTION_CLOSURES_REQUESTING_RESP
 import com.teslamotors.protocol.util.ACTION_CONNECTING
 import com.teslamotors.protocol.util.ACTION_CONNECTING_RESP
-import com.teslamotors.protocol.util.ACTION_EPHEMERAL_KEY_REQUESTING
 import com.teslamotors.protocol.util.ACTION_EPHEMERAL_KEY_REQUESTING_RESP
 import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING
 import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING_RESP
@@ -105,12 +103,13 @@ class MainActivity : AppCompatActivity() {
 
                         // 3 ... some ui control
                         if (msg.arg1 == STATUS_CODE_OK && (useSharedKey()?.isNotEmpty() == true)) {
-                            rootView.btnTest5.visibility = View.VISIBLE
                             // 4 show overlay controller
                             sendMessage(sMessenger, ACTION_OVERLAY_CONTROLLER_SHOW)
                         } else {
                             rootView.btnTest2.visibility =
                                 if (msg.arg1 == STATUS_CODE_OK) View.VISIBLE else View.INVISIBLE
+
+
                         }
                     }
                 }
@@ -124,7 +123,6 @@ class MainActivity : AppCompatActivity() {
                     activity.createToast(activity, msg.obj as String)
 
                     // change some ui
-                    activity.rootView.btnTest5.visibility = View.VISIBLE
                     activity.rootView.btnTest2.visibility = View.INVISIBLE
 
                     // show overlay controller
@@ -175,33 +173,31 @@ class MainActivity : AppCompatActivity() {
         }
 
         // request ephemeral key
-        rootView.btnTest3.setOnClickListener {
-            sendMessage(sMessenger, ACTION_EPHEMERAL_KEY_REQUESTING)
-        }
+        // rootView.btnTest3.setOnClickListener {
+        //    sendMessage(sMessenger, ACTION_EPHEMERAL_KEY_REQUESTING)
+        // }
 
         // authenticate
-        rootView.btnTest4.setOnClickListener {
-            sendMessage(sMessenger, ACTION_AUTHENTICATING)
-        }
+        // rootView.btnTest4.setOnClickListener {
+        //    sendMessage(sMessenger, ACTION_AUTHENTICATING)
+        // }
 
         // ---------------------------------
         // real control .....
-        rootView.btnTest5.setOnClickListener {
-            sendMessage(sMessenger, ACTION_CLOSURES_REQUESTING)
-        }
+        // rootView.btnTest5.setOnClickListener {
+        //    sendMessage(sMessenger, ACTION_CLOSURES_REQUESTING)
+        // }
 
-        rootView.btnTest5.setOnLongClickListener { _ ->
-            sendMessage(sMessenger, ACTION_CLOSURES_REQUESTING, true)
-            true
-        }
+        // rootView.btnTest5.setOnLongClickListener { _ ->
+        //    sendMessage(sMessenger, ACTION_CLOSURES_REQUESTING, true)
+        //    true
+        // }
 
         // ------------------------
         // real time display vehicle sending data
-        BluetoothLeService.printCheckData.observe(this@MainActivity){
-
+        BluetoothLeService.printCheckData.observe(this@MainActivity) { data ->
+            rootView.tvConnectStatus.text = data
         }
-
-
     }
 
     override fun onResume() {

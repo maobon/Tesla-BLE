@@ -128,6 +128,7 @@ class BluetoothLeService : Service() {
             // todo core ... received from vehicle
             // response to Ac ....
             override fun onVehicleResponse(vcsecMsg: vcsec.FromVCSECMessage?) {
+                displayDataAppendOnAc(vcsecMsg.toString())
 
                 // use to judge what action is running .
                 when (mGatt.opera) {

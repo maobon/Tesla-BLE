@@ -6,16 +6,21 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <androidx.appcompat.widget.AppCompatTextView
-        android:id="@+id/tv_connect_status"
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_above="@id/btn_test_1"
         android:layout_centerInParent="true"
         android:layout_marginBottom="15dp"
-        android:padding="5dp"
-        android:scrollbars="vertical"
-        android:textSize="12sp" />
+        android:padding="5dp">
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tv_connect_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="vertical"
+            android:textSize="12sp" />
+    </ScrollView>
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btn_test_1"
@@ -23,7 +28,7 @@
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
-        android:layout_marginBottom="150dp"
+        android:layout_marginBottom="15dp"
         android:text="Connect to Tesla"
         android:textAllCaps="false" />
 
@@ -31,40 +36,10 @@
         android:id="@+id/btn_test_2"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/btn_test_1"
+        android:layout_above="@id/btn_test_1"
         android:layout_centerInParent="true"
         android:text="Add Key"
         android:textAllCaps="false"
-        android:visibility="invisible" />
-
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/btn_test_3"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/btn_test_2"
-        android:layout_centerInParent="true"
-        android:text="Request Ephemeral Key"
-        android:textAllCaps="false"
-        android:visibility="gone" />
-
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/btn_test_4"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/btn_test_3"
-        android:layout_centerInParent="true"
-        android:text="Auth"
-        android:textAllCaps="false"
-        android:visibility="gone" />
-
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/btn_test_5"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/btn_test_4"
-        android:layout_centerInParent="true"
-        android:text="Real Control"
-        android:textAllCaps="false"
-        android:visibility="invisible" />
+        android:visibility="visible" />
 
 </RelativeLayout>

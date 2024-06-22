@@ -124,10 +124,12 @@ class BluetoothLeService : Service() {
                 )
             }
 
+            // todo core ... received from vehicle
             // response to Ac ....
             override fun onVehicleResponse(vcsecMsg: vcsec.FromVCSECMessage?) {
-                when (mGatt.opera) { // use to judge what action is running ...
 
+                // use to judge what action is running .
+                when (mGatt.opera) {
                     KEY_TO_WHITELIST_ADDING -> {
                         val ret = with(vcsecMsg!!) {
                             AddKeyVehicleResponse().perform(this, keyStoreUtils.keyId)
@@ -183,7 +185,6 @@ class BluetoothLeService : Service() {
             override fun onError(type: GattErrorType, statusCode: Int?, desc: String?) {
                 Log.e(TAG, "onError: AC received ERROR: ${type.name} desc:$desc")
             }
-
         })
     }
 
@@ -215,7 +216,6 @@ class BluetoothLeService : Service() {
     // we need to create custom notification stating foreground service is running
     @RequiresApi(Build.VERSION_CODES.O)
     private fun startBluetoothForegroundService() {
-
         val channel = NotificationChannel(
             CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH
         )

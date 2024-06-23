@@ -42,7 +42,6 @@ import com.teslamotors.protocol.msg.key.EphemeralKeyVehicleResponse
 import com.teslamotors.protocol.ui.OverlayController
 import com.teslamotors.protocol.ui.PartClickListener
 import com.teslamotors.protocol.util.ACTION_AUTHENTICATING
-import com.teslamotors.protocol.util.ACTION_AUTHENTICATING_RESP
 import com.teslamotors.protocol.util.ACTION_CLIENT_MESSENGER
 import com.teslamotors.protocol.util.ACTION_CLOSURES_REQUESTING
 import com.teslamotors.protocol.util.ACTION_CLOSURES_REQUESTING_RESP
@@ -163,20 +162,14 @@ class BluetoothLeService : Service() {
                         }
                     }
 
-                    AUTHENTICATING -> {
-                        Log.d(TAG, "onVehicleResponse: AUTHENTICATING ...")
+                    AUTHENTICATING, CLOSURES_REQUESTING -> {
+                        Log.d(TAG, "onVehicleResponse: AUTHENTICATING or CLOSURES_REQUESTING ...")
                         checkVehicleResponseMessageStatus(vcsecMsg!!) {
                             sendMessage(
-                                cMessenger, ACTION_AUTHENTICATING_RESP, "Auth Successfully"
-                            )
-                        }
-                    }
-
-                    CLOSURES_REQUESTING -> {
-                        Log.d(TAG, "onVehicleResponse: CLOSURES_REQUESTING ...")
-                        checkVehicleResponseMessageStatus(vcsecMsg!!) {
-                            sendMessage(
-                                cMessenger, ACTION_TOAST, "Closures OK"
+                                cMessenger,
+                                ACTION_CLOSURES_REQUESTING_RESP,
+                                "Processing Successfully",
+                                STATUS_CODE_OK
                             )
                         }
                     }
@@ -377,7 +370,7 @@ class BluetoothLeService : Service() {
             mBluetoothUtil.mScanner.stopScan(mScanCallback)
 
             if (sendAction) {
-                sendMessage(cMessenger, ACTION_CONNECTING_RESP)
+                sendMessage(cMessenger, ACTION_CONNECTING_RESP, "15s scanning process end, can not find my car!!")
             }
         }
     }
@@ -427,7 +420,12 @@ class BluetoothLeService : Service() {
         mGatt.writeCharacteristic(txCharacteristic, requestMsg, CLOSURES_REQUESTING)
     }
 
-    // real action judge is ERROR or SUCC
+    /**
+     * analysis vehicle response data
+     *
+     * @param resp vcsec.FromVCSECMessage
+     * @param onExpected vehicle response process successful
+     */
     private fun checkVehicleResponseMessageStatus(
         resp: vcsec.FromVCSECMessage, onExpected: () -> Unit
     ) = with(resp) {
@@ -443,7 +441,7 @@ class BluetoothLeService : Service() {
             if (respCounter > 100) {
                 onExpected.invoke()
             } else {
-                Log.d(TAG, "checkVehicleResponseMessageStatus: counter error")
+                Log.e(TAG, "checkVehicleResponseMessageStatus: counter error")
             }
         }
     }

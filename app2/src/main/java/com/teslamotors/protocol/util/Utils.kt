@@ -151,7 +151,7 @@ fun sendMessage(
     messenger: Messenger?,
     action: Int,
     obj: Any? = null,
-    statusCode: Int? = null
+    statusCode: Int? = STATUS_CODE_ERR
 ) {
     if (messenger == null) {
         Log.d(TAG, "sendMessage: messenger is null")

@@ -19,7 +19,6 @@ import android.os.Messenger
 import android.provider.Settings
 import android.text.TextUtils
 import android.util.Log
-import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
@@ -30,7 +29,6 @@ import com.teslamotors.protocol.ui.DialogUtil
 import com.teslamotors.protocol.ui.DialogUtil.PERMISSION_REQUEST_CODE
 import com.teslamotors.protocol.util.ACTION_AUTHENTICATING_RESP
 import com.teslamotors.protocol.util.ACTION_CLIENT_MESSENGER
-import com.teslamotors.protocol.util.ACTION_CLOSURES_REQUESTING
 import com.teslamotors.protocol.util.ACTION_CLOSURES_REQUESTING_RESP
 import com.teslamotors.protocol.util.ACTION_CONNECTING
 import com.teslamotors.protocol.util.ACTION_CONNECTING_RESP
@@ -88,52 +86,40 @@ class MainActivity : AppCompatActivity() {
 
                 // Bluetooth Connection Status ....
                 ACTION_CONNECTING_RESP -> {
-                    Log.d(TAG, "handleMessage: Ac received from Service")
-                    var ret = "Connected Failed"
                     activity.apply {
-                        // 1. scan and connect result
-                        if (msg.obj != null) {
-                            val status = msg.obj as String
-                            if (!TextUtils.isEmpty(status)) ret = status
-                        }
-
-                        // 2. release button status
                         rootView.btnTest1.isEnabled = true
 
-                        // 3 ... some ui control
-                        if (msg.arg1 == STATUS_CODE_OK && (useSharedKey()?.isNotEmpty() == true)) {
-                            // 4 show overlay controller
-                            sendMessage(sMessenger, ACTION_OVERLAY_CONTROLLER_SHOW)
+                        if (msg.arg1 == STATUS_CODE_OK) {
+                            if (useSharedKey()?.isNotEmpty() == true) {
+                                sendMessage(sMessenger, ACTION_OVERLAY_CONTROLLER_SHOW)
+                            }
+
                         } else {
-                            rootView.btnTest2.visibility =
-                                if (msg.arg1 == STATUS_CODE_OK) View.VISIBLE else View.INVISIBLE
+                            val desc = msg.obj as String
+                            if (!TextUtils.isEmpty(desc)) {
+                                rootView.tvReceivedData.text = desc
+                            }
                         }
                     }
                 }
 
                 ACTION_KEY_TO_WHITELIST_ADDING_RESP -> {}
-
                 ACTION_EPHEMERAL_KEY_REQUESTING_RESP -> {}
 
-                ACTION_AUTHENTICATING_RESP -> {
-                    Log.d(TAG, "handleMessage: MainAc received authenticate result ...")
+                ACTION_AUTHENTICATING_RESP, ACTION_CLOSURES_REQUESTING_RESP -> {
+                    Log.d(
+                        TAG,
+                        "handleMessage: Ac received authenticating or closures requesting OK"
+                    )
                     activity.createToast(activity, msg.obj as String)
 
                     // change some ui
-                    activity.rootView.btnTest2.visibility = View.INVISIBLE
+                    // activity.rootView.btnTest2.visibility = View.INVISIBLE
 
                     // show overlay controller
                     sendMessage(activity.sMessenger, ACTION_OVERLAY_CONTROLLER_SHOW)
                 }
 
-                ACTION_CLOSURES_REQUESTING_RESP -> {
-                    Log.d(TAG, "AC received closures control response")
-                    if (msg.obj != null) {
-                        val status = msg.obj as String
-                        // if (!TextUtils.isEmpty(status)) activity.rootView.tvConnectStatus.text =
-                        //     status
-                    }
-                }
             }
         }
     }
@@ -173,6 +159,7 @@ class MainActivity : AppCompatActivity() {
         // ---------------------------------
         // real time display vehicle sending data
         BluetoothLeService.printCheckData.observe(this@MainActivity) { data ->
+            Log.d(TAG, "AC print check data=$data")
             rootView.tvReceivedData.text = data
         }
     }

@@ -395,8 +395,12 @@ class BluetoothLeService : Service() {
             mGatt.writeCharacteristic(
                 txCharacteristic, requestMsg, KEY_TO_WHITELIST_ADDING
             )
-        } catch (e: Exception) {
-            hint = e.toString()
+        } catch (e: UninitializedPropertyAccessException) {
+            hint = "vehicle not connected. auto reconnect to vehicle."
+            Log.e(TAG, hint)
+            startBleScan()
+        } catch (e1: Exception){
+            hint = e1.toString()
         }
         sendMessage(cMessenger, ACTION_TOAST, hint)
     }

@@ -30,16 +30,16 @@ class GattCallback(
                 mStatusListener.onConnected(gatt)
 
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                Log.w(TAG, "Successfully disconnected from $deviceAddress")
                 gatt.close()
+                Log.w(TAG, "Successfully disconnected from $deviceAddress")
             }
 
         } else {
+            gatt.close()
             Log.w(TAG, "Error $status encountered for $deviceAddress! Disconnecting...")
             mStatusListener.onError(
                 GattErrorType.ERR_CONNECTION_STATUS_CHANGE, status, "connection failed"
             )
-            gatt.close()
         }
     }
 
@@ -116,6 +116,9 @@ class GattCallback(
 
             BluetoothGatt.GATT_READ_NOT_PERMITTED -> {
                 Log.e(TAG, "Read not permitted for $uuid!")
+                mStatusListener.onError(
+                    GattErrorType.ERR_CHARACTERISTIC_READ, status, "Read not permitted for $uuid!"
+                )
             }
 
             else -> {
@@ -139,6 +142,7 @@ class GattCallback(
                 )
                 return
             }
+
             val hex = value.toHexString()
             Log.i(TAG, "Characteristic $uuid changed | value: $hex")
             processReceiveMsg(characteristic, value)
@@ -154,6 +158,7 @@ class GattCallback(
             )
             return
         }
+
         val hex = value.toHexString()
         with(characteristic) {
             Log.i(TAG, "Characteristic $uuid changed | value: $hex")

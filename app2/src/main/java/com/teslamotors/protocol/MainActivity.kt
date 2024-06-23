@@ -96,7 +96,7 @@ class MainActivity : AppCompatActivity() {
                             val status = msg.obj as String
                             if (!TextUtils.isEmpty(status)) ret = status
                         }
-                        rootView.tvConnectStatus.text = ret
+                        // rootView.tvConnectStatus.text = ret
 
                         // 2. release button status
                         rootView.btnTest1.isEnabled = true
@@ -108,8 +108,6 @@ class MainActivity : AppCompatActivity() {
                         } else {
                             rootView.btnTest2.visibility =
                                 if (msg.arg1 == STATUS_CODE_OK) View.VISIBLE else View.INVISIBLE
-
-
                         }
                     }
                 }
@@ -133,11 +131,9 @@ class MainActivity : AppCompatActivity() {
                     Log.d(TAG, "AC received closures control response")
                     if (msg.obj != null) {
                         val status = msg.obj as String
-                        if (!TextUtils.isEmpty(status)) activity.rootView.tvConnectStatus.text =
-                            status
+                        // if (!TextUtils.isEmpty(status)) activity.rootView.tvConnectStatus.text =
+                        //     status
                     }
-
-
                 }
             }
         }
@@ -161,42 +157,24 @@ class MainActivity : AppCompatActivity() {
                 )
             } else {
                 it.isEnabled = false
-                rootView.tvConnectStatus.text = ""
+                // rootView.tvConnectStatus.text = ""
                 sendMessage(sMessenger, ACTION_CONNECTING)
             }
         }
 
         // ---------------------------------
-        // add key to white list
+        // ADD KEY
+        // 1. add key to white list
+        // 2. request ephemeral key
+        // 3. authenticate
         rootView.btnTest2.setOnClickListener {
             sendMessage(sMessenger, ACTION_KEY_TO_WHITELIST_ADDING)
         }
 
-        // request ephemeral key
-        // rootView.btnTest3.setOnClickListener {
-        //    sendMessage(sMessenger, ACTION_EPHEMERAL_KEY_REQUESTING)
-        // }
-
-        // authenticate
-        // rootView.btnTest4.setOnClickListener {
-        //    sendMessage(sMessenger, ACTION_AUTHENTICATING)
-        // }
-
         // ---------------------------------
-        // real control .....
-        // rootView.btnTest5.setOnClickListener {
-        //    sendMessage(sMessenger, ACTION_CLOSURES_REQUESTING)
-        // }
-
-        // rootView.btnTest5.setOnLongClickListener { _ ->
-        //    sendMessage(sMessenger, ACTION_CLOSURES_REQUESTING, true)
-        //    true
-        // }
-
-        // ------------------------
         // real time display vehicle sending data
         BluetoothLeService.printCheckData.observe(this@MainActivity) { data ->
-            rootView.tvConnectStatus.text = data
+            // rootView.tvConnectStatus.text = data
         }
     }
 

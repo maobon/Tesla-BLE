@@ -117,6 +117,8 @@ class BluetoothLeService : Service() {
 
                 // connect process completed ....
                 // todo .... connection established ....
+                displayDataAppendOnAc("Vehicle connected successful !!")
+
                 sendMessage(
                     cMessenger,
                     ACTION_CONNECTING_RESP,
@@ -133,37 +135,29 @@ class BluetoothLeService : Service() {
                 // use to judge what action is running .
                 when (mGatt.opera) {
                     KEY_TO_WHITELIST_ADDING -> {
-                        val ret = with(vcsecMsg!!) {
+                        val isSucc = with(vcsecMsg!!) {
                             AddKeyVehicleResponse().perform(this, keyStoreUtils.keyId)
                         }
-                        Log.d(
-                            TAG,
-                            "onVehicleResponse: KEY_TO_WHITELIST_ADDING -> keystore process result: $ret"
-                        )
+                        Log.d(TAG, "KEY_TO_WHITELIST_ADDING -> keystore process result: $isSucc")
 
-                        // todo add new sequence ...
-                        if (ret) {
-                            requestEphemeralKey()
-                        }
+                        // auto process next procedure .
+                        // request to ephemeral key
+                        if (isSucc) requestEphemeralKey()
                     }
 
                     EPHEMERAL_KEY_REQUESTING -> {
                         val sharedKey = with(vcsecMsg!!) {
                             EphemeralKeyVehicleResponse().perform(this@BluetoothLeService, this)
                         }
-                        Log.d(
-                            TAG,
-                            "onVehicleResponse: EPHEMERAL_KEY_REQUESTING -> get shared key: $sharedKey"
-                        )
+                        Log.d(TAG, "EPHEMERAL_KEY_REQUESTING -> get shared key: $sharedKey")
 
-                        // todo .... add sequence ....
-                        if (sharedKey.isNotEmpty()) {
-                            authenticate()
-                        }
+                        // auto process next procedure .
+                        // authenticate . null requesting message to verify
+                        if (sharedKey.isNotEmpty()) authenticate()
                     }
 
                     AUTHENTICATING, CLOSURES_REQUESTING -> {
-                        Log.d(TAG, "onVehicleResponse: AUTHENTICATING or CLOSURES_REQUESTING ...")
+                        Log.d(TAG, "AUTHENTICATING or CLOSURES_REQUESTING")
                         checkVehicleResponseMessageStatus(vcsecMsg!!) {
                             sendMessage(
                                 cMessenger,
@@ -248,8 +242,7 @@ class BluetoothLeService : Service() {
             // get complete local name from advertising data
             result.scanRecord?.advertisingDataMap?.get(9).let {
                 val localName = java.lang.String(it)
-                if (localName.isNotEmpty())
-                    Log.i(TAG, "onScanResult: completeLocalName=$localName")
+                if (localName.isNotEmpty()) Log.i(TAG, "onScanResult: completeLocalName=$localName")
 
                 if (TESLA_BLUETOOTH_BEACON_LOCAL_NAME.equals(localName)) {
                     Log.d(TAG, "onScanResult: === FIND MY CAR ===")
@@ -288,32 +281,32 @@ class BluetoothLeService : Service() {
     ) : Handler(Looper.getMainLooper()) {
         override fun handleMessage(msg: Message) {
             when (msg.what) {
-                ACTION_CLIENT_MESSENGER -> {
-                    service.cMessenger = msg.replyTo
-                }
+                ACTION_CLIENT_MESSENGER -> service.cMessenger = msg.replyTo
 
                 ACTION_CONNECTING -> service.startBleScan()
+                ACTION_OVERLAY_CONTROLLER_SHOW -> service.openOverlay()
 
                 ACTION_KEY_TO_WHITELIST_ADDING -> service.addKey()
                 ACTION_EPHEMERAL_KEY_REQUESTING -> service.requestEphemeralKey()
                 ACTION_AUTHENTICATING -> service.authenticate()
 
-                ACTION_CLOSURES_REQUESTING -> {
-                    Log.d(TAG, "handleMessage: check thread=${Thread.currentThread().name}")
-                    val isFront = if (msg.obj == null) false else msg.obj as Boolean
-                    service.openPassengerDoor(isFront)
-                }
-
-                ACTION_OVERLAY_CONTROLLER_SHOW -> {
-                    service.openOverlay()
-                }
+                ACTION_CLOSURES_REQUESTING -> service
+                    .openPassengerDoor(if (msg.obj == null) false else msg.obj as Boolean)
             }
         }
     }
 
+    /**
+     * use to stop foreground service
+     *
+     * @param intent
+     * @param flags
+     * @param startId
+     * @return
+     */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (SERVICE_ACTION_STOP == intent?.action) {
-            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopForeground(Service.STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
         return START_NOT_STICKY
@@ -323,8 +316,10 @@ class BluetoothLeService : Service() {
         return Messenger(mServiceHandler).binder
     }
 
-    // step1 ....................
-    // scan and connect .... every time ....
+    /**
+     * 1. Bluetooth Scan and Connect to vehicle
+     * every time need do first
+     */
     private fun startBleScan() {
         Log.i(TAG, "startBleScan: ")
 
@@ -350,10 +345,8 @@ class BluetoothLeService : Service() {
     }
 
     private fun getScanSettings(): ScanSettings {
-        return ScanSettings.Builder()
-            .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
-            .setReportDelay(0)
-            .build()
+        return ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
+            .setReportDelay(0).build()
     }
 
     private fun countdownTime(ms: Long) {
@@ -379,8 +372,10 @@ class BluetoothLeService : Service() {
         }
     }
 
-    // -----------------------------------------------
-    // step2 ....................
+    /**
+     * add key to vehicle white list
+     * step 1
+     */
     private fun addKey() {
         Log.i(TAG, "addKey: ")
         if (x963FormatPublicKey.isEmpty()) {
@@ -399,20 +394,26 @@ class BluetoothLeService : Service() {
             hint = "vehicle not connected. auto reconnect to vehicle."
             Log.e(TAG, hint)
             startBleScan()
-        } catch (e1: Exception){
+        } catch (e1: Exception) {
             hint = e1.toString()
         }
         sendMessage(cMessenger, ACTION_TOAST, hint)
     }
 
-    // step3 ....................
+    /**
+     * request ephemeral key to vehicle
+     * step 2
+     */
     private fun requestEphemeralKey() {
         Log.i(TAG, "requestEphemeralKey: ")
         val requestMsg = EphemeralKeyRequest().perform(keyStoreUtils.keyId)
         mGatt.writeCharacteristic(txCharacteristic, requestMsg, EPHEMERAL_KEY_REQUESTING)
     }
 
-    // step 4 ...............................
+    /**
+     * authenticate
+     * step 3 the last step in add key to white list procedure
+     */
     private fun authenticate() {
         Log.i(TAG, "authenticate: ")
         // val sharedKey: ByteArray = keyStoreUtils.sharedKey
@@ -422,8 +423,12 @@ class BluetoothLeService : Service() {
         mGatt.writeCharacteristic(txCharacteristic, requestMsg, AUTHENTICATING)
     }
 
-    // -----------------------------------------------
-    // real control
+    /**
+     * 2. Closures control request
+     * real control. After add key to white list successful, next time only first to connect vehicle
+     *
+     * @param isFront
+     */
     private fun openPassengerDoor(isFront: Boolean = false) {
         Log.i(TAG, "openPassengerDoor: ")
         // val sharedKey: ByteArray = keyStoreUtils.sharedKey
@@ -434,10 +439,11 @@ class BluetoothLeService : Service() {
     }
 
     /**
-     * analysis vehicle response data
+     * vehicle response data analysis
      *
      * @param resp vcsec.FromVCSECMessage
      * @param onExpected vehicle response process successful
+     * todo ..............................
      */
     private fun checkVehicleResponseMessageStatus(
         resp: vcsec.FromVCSECMessage, onExpected: () -> Unit
@@ -478,6 +484,11 @@ class BluetoothLeService : Service() {
         }
     }
 
+    /**
+     * TODO
+     *
+     * @param data
+     */
     fun displayDataAppendOnAc(data: String) {
         val builder: StringBuilder = StringBuilder(printCheckData.value!!)
         builder.append(data)

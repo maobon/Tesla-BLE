@@ -19,6 +19,13 @@ class GattCallback(
     private val mStatusListener: ConnectionStateListener
 ) : BluetoothGattCallback() {
 
+    /**
+     * connection state change
+     *
+     * @param gatt
+     * @param status
+     * @param newState
+     */
     override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
         val deviceAddress = gatt.device.address
 
@@ -43,6 +50,12 @@ class GattCallback(
         }
     }
 
+    /**
+     * service's discovered
+     *
+     * @param gatt
+     * @param status
+     */
     override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
         with(gatt) {
             Log.w(TAG, "Discovered ${services.size} services for ${device.address}")
@@ -73,6 +86,13 @@ class GattCallback(
         }
     }
 
+    /**
+     * service's Characteristic read
+     *
+     * @param gatt
+     * @param characteristic
+     * @param status
+     */
     @Deprecated("Deprecated for Android 13+")
     @Suppress("DEPRECATION")
     override fun onCharacteristicRead(
@@ -130,6 +150,12 @@ class GattCallback(
         }
     }
 
+    /**
+     * service's Characteristic changed
+     *
+     * @param gatt
+     * @param characteristic
+     */
     @Deprecated("Deprecated for Android 13+")
     @Suppress("DEPRECATION")
     override fun onCharacteristicChanged(
@@ -166,6 +192,13 @@ class GattCallback(
         }
     }
 
+    /**
+     * core function
+     * analysis received messages from vehicle
+     *
+     * @param characteristic BluetoothGattCharacteristic
+     * @param value ByteArray
+     */
     private fun processReceiveMsg(characteristic: BluetoothGattCharacteristic, value: ByteArray) {
         if (characteristic.uuid == TESLA_RX_CHARACTERISTIC_UUID) {
             val fromVCSECMessage: vcsec.FromVCSECMessage? = MessageUtil.autoChaCha(value)

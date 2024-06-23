@@ -5,7 +5,6 @@ import android.bluetooth.BluetoothManager
 import android.bluetooth.le.BluetoothLeScanner
 import android.content.Context
 
-
 class BluetoothUtil(context: Context) {
 
     private val mBluetoothAdapter: BluetoothAdapter by lazy {

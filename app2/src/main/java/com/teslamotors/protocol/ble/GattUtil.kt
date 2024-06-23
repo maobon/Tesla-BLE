@@ -22,15 +22,30 @@ class GattUtil(
     private val stateListener: ConnectionStateListener? = null
 ) {
 
+    /**
+     * Operations
+     * bluetooth write and enable notifications
+     */
     var opera: Operations? = null
 
+    /**
+     * discovery bluetooth LE services
+     * 100 ms delay
+     */
     fun discoveryServices() {
         val discoveryRun = java.lang.Runnable {
             bluetoothGatt?.discoverServices()
         }
-        Handler(Looper.getMainLooper()).postDelayed(discoveryRun, 100)
+        Handler(Looper.getMainLooper()).postDelayed(discoveryRun, 100L)
     }
 
+    /**
+     * write characteristic
+     *
+     * @param characteristic BluetoothGattCharacteristic
+     * @param payload ByteArray
+     * @param operations
+     */
     fun writeCharacteristic(
         characteristic: BluetoothGattCharacteristic,
         payload: ByteArray,
@@ -77,6 +92,12 @@ class GattUtil(
         writeCharacteristic(characteristic)
     }
 
+    /**
+     * write descriptor
+     *
+     * @param descriptor BluetoothGattDescriptor
+     * @param payload ByteArray
+     */
     private fun writeDescriptor(descriptor: BluetoothGattDescriptor, payload: ByteArray) {
         bluetoothGatt?.let { gatt ->
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -97,6 +118,12 @@ class GattUtil(
         return writeDescriptor(descriptor)
     }
 
+    /**
+     * enable notification or indication
+     *
+     * @param characteristic BluetoothGattCharacteristic
+     * @param cccdUuid UUID
+     */
     fun enableNotifications(characteristic: BluetoothGattCharacteristic, cccdUuid: UUID) {
         val payload = when {
             characteristic.isIndicatable() -> BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
@@ -125,6 +152,12 @@ class GattUtil(
         )
     }
 
+    /**
+     * disable notification or indication
+     *
+     * @param characteristic BluetoothGattCharacteristic
+     * @param cccdUuid UUID
+     */
     fun disableNotifications(characteristic: BluetoothGattCharacteristic, cccdUuid: UUID) {
         if (!characteristic.isNotifiable() && !characteristic.isIndicatable()) {
             responseErr(

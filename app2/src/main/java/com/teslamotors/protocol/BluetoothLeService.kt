@@ -370,7 +370,11 @@ class BluetoothLeService : Service() {
             mBluetoothUtil.mScanner.stopScan(mScanCallback)
 
             if (sendAction) {
-                sendMessage(cMessenger, ACTION_CONNECTING_RESP, "15s scanning process end, can not find my car!!")
+                sendMessage(
+                    cMessenger,
+                    ACTION_CONNECTING_RESP,
+                    "15s scanning process end, can not find my car!!"
+                )
             }
         }
     }
@@ -385,11 +389,16 @@ class BluetoothLeService : Service() {
         }
 
         val requestMsg = AddKeyToWhiteListRequest().perform(x963FormatPublicKey)
-        mGatt.writeCharacteristic(
-            txCharacteristic, requestMsg, KEY_TO_WHITELIST_ADDING
-        )
 
-        sendMessage(cMessenger, ACTION_TOAST, "Tap Card")
+        var hint = "Tap Card"
+        try {
+            mGatt.writeCharacteristic(
+                txCharacteristic, requestMsg, KEY_TO_WHITELIST_ADDING
+            )
+        } catch (e: Exception) {
+            hint = e.toString()
+        }
+        sendMessage(cMessenger, ACTION_TOAST, hint)
     }
 
     // step3 ....................

@@ -96,7 +96,6 @@ class MainActivity : AppCompatActivity() {
                             val status = msg.obj as String
                             if (!TextUtils.isEmpty(status)) ret = status
                         }
-                        // rootView.tvConnectStatus.text = ret
 
                         // 2. release button status
                         rootView.btnTest1.isEnabled = true
@@ -157,7 +156,7 @@ class MainActivity : AppCompatActivity() {
                 )
             } else {
                 it.isEnabled = false
-                // rootView.tvConnectStatus.text = ""
+                rootView.tvReceivedData.text = ""
                 sendMessage(sMessenger, ACTION_CONNECTING)
             }
         }
@@ -174,7 +173,7 @@ class MainActivity : AppCompatActivity() {
         // ---------------------------------
         // real time display vehicle sending data
         BluetoothLeService.printCheckData.observe(this@MainActivity) { data ->
-            // rootView.tvConnectStatus.text = data
+            rootView.tvReceivedData.text = data
         }
     }
 
@@ -268,7 +267,7 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) {
         if (it.resultCode == Activity.RESULT_OK) {
-            // mBluetoothLeService?.startBleScan()
+            // start scan
             sendMessage(sMessenger, ACTION_CONNECTING)
         } else {
             promptEnableBluetooth()

@@ -102,6 +102,7 @@ class BluetoothLeService : Service() {
                 Log.d(TAG, "onConnected: vehicle connected successful ...")
 
                 mGatt = GattUtil(gatt, this)
+
                 // auto next step discovery services
                 mGatt.discoveryServices()
             }
@@ -185,7 +186,9 @@ class BluetoothLeService : Service() {
             }
 
             override fun onError(type: GattErrorType, statusCode: Int?, desc: String?) {
-                Log.e(TAG, "onError: AC received ERROR: ${type.name} desc:$desc")
+                val str = "BluetoothLeService onError: ${type.name} desc:$desc"
+                Log.e(TAG, str)
+                displayDataAppendOnAc(str)
             }
         })
     }
@@ -252,7 +255,8 @@ class BluetoothLeService : Service() {
             // get complete local name from advertising data
             result.scanRecord?.advertisingDataMap?.get(9).let {
                 val localName = java.lang.String(it)
-                Log.i(TAG, "onScanResult: completeLocalName=$localName")
+                if (localName.isNotEmpty())
+                    Log.i(TAG, "onScanResult: completeLocalName=$localName")
 
                 if (TESLA_BLUETOOTH_BEACON_LOCAL_NAME.equals(localName)) {
                     Log.d(TAG, "onScanResult: === FIND MY CAR ===")
@@ -268,8 +272,12 @@ class BluetoothLeService : Service() {
         }
 
         override fun onScanFailed(errorCode: Int) {
-            Log.e(TAG, "onScanFailed: scan callback err code: $errorCode")
-            mScanning = false
+            val err = "onScanFailed: scan callback err code: $errorCode"
+            Log.e(TAG, err)
+            if (mScanning) {
+                stopBleScan()
+            }
+            displayDataAppendOnAc(err)
         }
     }
 

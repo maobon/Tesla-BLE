@@ -37,11 +37,14 @@ import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING
 import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING_RESP
 import com.teslamotors.protocol.util.ACTION_OVERLAY_CONTROLLER_SHOW
 import com.teslamotors.protocol.util.ACTION_TOAST
+import com.teslamotors.protocol.util.SERVICE_ACTION_STOP
 import com.teslamotors.protocol.util.STATUS_CODE_ERR
 import com.teslamotors.protocol.util.STATUS_CODE_OK
 import com.teslamotors.protocol.util.createToast
+import com.teslamotors.protocol.util.enableLocation
 import com.teslamotors.protocol.util.hasPermission
 import com.teslamotors.protocol.util.hasRequiredBluetoothPermissions
+import com.teslamotors.protocol.util.isLocationEnable
 import com.teslamotors.protocol.util.requestRelevantRuntimePermissions
 import com.teslamotors.protocol.util.sendMessage
 import com.teslamotors.protocol.util.useSharedKey
@@ -139,6 +142,7 @@ class MainActivity : AppCompatActivity() {
 
         mBluetoothUtil = BluetoothUtil(this@MainActivity)
 
+        // -------------------------
         // scan and connect to vehicle
         rootView.btnTest1.setOnClickListener {
             if (!hasRequiredBluetoothPermissions()) {
@@ -150,6 +154,16 @@ class MainActivity : AppCompatActivity() {
                 rootView.tvReceivedData.text = ""
                 sendMessage(sMessenger, ACTION_CONNECTING)
             }
+        }
+
+        // --------------------------------------
+        rootView.btnTest1.setOnLongClickListener {
+            // foreground service will be destroyed
+            stopBluetoothLeService()
+
+            // todo close the app .................
+            // finish()
+            true
         }
 
         // ---------------------------------
@@ -174,6 +188,10 @@ class MainActivity : AppCompatActivity() {
 
         if (!mBluetoothUtil.isBluetoothEnable()) {
             promptEnableBluetooth()
+        }
+
+        if(!isLocationEnable()){
+            enableLocation(this@MainActivity)
         }
 
         checkOverlayPermission()
@@ -298,9 +316,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun stopBluetoothLeService(){
+        // unbindService(mServiceConnImpl)
+
+        Intent(this@MainActivity, BluetoothLeService::class.java).apply {
+            action = SERVICE_ACTION_STOP
+            startService(this)
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
-        unbindService(mServiceConnImpl)
+        // unbindService(mServiceConnImpl)
     }
 
     private companion object {

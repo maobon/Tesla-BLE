@@ -16,9 +16,11 @@ class OverlayController(
     partClickListener: PartClickListener? = null
 ) {
     private val mFloatBallView: View
+    private var mIsOpening = false
 
     // WindowManager
-    private val wm: WindowManager = context.getSystemService(WINDOW_SERVICE) as WindowManager
+    private val windowManager: WindowManager =
+        context.getSystemService(WINDOW_SERVICE) as WindowManager
 
     // LayoutInflater
     private val inflater: LayoutInflater =
@@ -28,7 +30,7 @@ class OverlayController(
         // inflating the view with the custom layout we created
         mFloatBallView = inflater.inflate(R.layout.cust_window, null)
 
-        val touchListener = ChildViewTouchListener(getLayoutParams(), wm)
+        val touchListener = ChildViewTouchListener(getLayoutParams(), windowManager)
         touchListener.mPartListener = partClickListener
 
         mFloatBallView.setOnTouchListener(touchListener)
@@ -39,7 +41,8 @@ class OverlayController(
             // check if the view is already inflated or present in the window
             if (mFloatBallView.windowToken == null) {
                 if (mFloatBallView.parent == null) {
-                    wm.addView(mFloatBallView, getLayoutParams())
+                    windowManager.addView(mFloatBallView, getLayoutParams())
+                    mIsOpening = true
                 }
             }
         } catch (e: Exception) {
@@ -49,8 +52,11 @@ class OverlayController(
 
     fun closeOverlay() {
         try {
+            // overlay is opening ?
+            if(!mIsOpening) return
+
             // remove the view from the window
-            wm.removeView(mFloatBallView)
+            windowManager.removeView(mFloatBallView)
             // invalidate the view
             mFloatBallView.invalidate()
 
@@ -59,7 +65,6 @@ class OverlayController(
 
             // the above steps are necessary when you are adding and removing the view
             // simultaneously, it might give some exceptions
-
         } catch (e: Exception) {
             e.printStackTrace()
         }

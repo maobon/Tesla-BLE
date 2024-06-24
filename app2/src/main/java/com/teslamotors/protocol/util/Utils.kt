@@ -182,6 +182,8 @@ fun Context.toPx(dp: Int): Float = TypedValue.applyDimension(
     resources.displayMetrics
 )
 
+//
 
+const val TESLA_MSG_OPERATION_STATUS_ERR = "OPERATIONSTATUS_ERROR"
 
 

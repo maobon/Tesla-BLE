@@ -55,8 +55,10 @@ import com.teslamotors.protocol.util.CHANNEL_ID
 import com.teslamotors.protocol.util.CHANNEL_NAME
 import com.teslamotors.protocol.util.JUtils
 import com.teslamotors.protocol.util.SERVICE_ACTION_STOP
+import com.teslamotors.protocol.util.STATUS_CODE_ERR
 import com.teslamotors.protocol.util.STATUS_CODE_OK
 import com.teslamotors.protocol.util.TESLA_BLUETOOTH_BEACON_LOCAL_NAME
+import com.teslamotors.protocol.util.TESLA_MSG_OPERATION_STATUS_ERR
 import com.teslamotors.protocol.util.TESLA_RX_CHARACTERISTIC_DESCRIPTOR_UUID
 import com.teslamotors.protocol.util.countAutoIncrement
 import com.teslamotors.protocol.util.sendMessage
@@ -443,24 +445,33 @@ class BluetoothLeService : Service() {
      *
      * @param resp vcsec.FromVCSECMessage
      * @param onExpected vehicle response process successful
-     * todo ..............................
      */
     private fun checkVehicleResponseMessageStatus(
         resp: vcsec.FromVCSECMessage, onExpected: () -> Unit
     ) = with(resp) {
+
         val errorDesc = commandStatus.operationStatus.name
-        if (errorDesc == "OPERATIONSTATUS_ERROR") {
+        if (errorDesc == TESLA_MSG_OPERATION_STATUS_ERR) {
             val desc = commandStatus.signedMessageStatus.signedMessageInformation.name
-            Log.d(TAG, "checkVehicleResponseMessageStatus:  .... error desc= $desc")
-            sendMessage(cMessenger, ACTION_CLOSURES_REQUESTING_RESP, desc)
+            displayDataAppendOnAc("Received From Tesla: OPERATIONSTATUS_ERROR $desc")
+            sendMessage(cMessenger, ACTION_CLOSURES_REQUESTING_RESP, desc, STATUS_CODE_ERR)
+            Log.e(TAG, "Received From Tesla: OPERATIONSTATUS_ERROR $desc")
 
         } else {
-            // succ ...
             val respCounter = commandStatus.signedMessageStatus.counter
             if (respCounter > 100) {
+                // successful response from vehicle
                 onExpected.invoke()
+
             } else {
-                Log.e(TAG, "checkVehicleResponseMessageStatus: counter error")
+                Log.e(TAG, "checkVehicleResponseMessageStatus: command counter error")
+                displayDataAppendOnAc("command counter error")
+                sendMessage(
+                    cMessenger,
+                    ACTION_CLOSURES_REQUESTING_RESP,
+                    "counter error",
+                    STATUS_CODE_ERR
+                )
             }
         }
     }
@@ -485,7 +496,7 @@ class BluetoothLeService : Service() {
     }
 
     /**
-     * TODO
+     * display received message from Tesla on AC
      *
      * @param data
      */

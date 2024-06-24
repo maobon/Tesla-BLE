@@ -37,6 +37,7 @@ import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING
 import com.teslamotors.protocol.util.ACTION_KEY_TO_WHITELIST_ADDING_RESP
 import com.teslamotors.protocol.util.ACTION_OVERLAY_CONTROLLER_SHOW
 import com.teslamotors.protocol.util.ACTION_TOAST
+import com.teslamotors.protocol.util.STATUS_CODE_ERR
 import com.teslamotors.protocol.util.STATUS_CODE_OK
 import com.teslamotors.protocol.util.createToast
 import com.teslamotors.protocol.util.hasPermission
@@ -107,19 +108,23 @@ class MainActivity : AppCompatActivity() {
                 ACTION_EPHEMERAL_KEY_REQUESTING_RESP -> {}
 
                 ACTION_AUTHENTICATING_RESP, ACTION_CLOSURES_REQUESTING_RESP -> {
-                    Log.d(
-                        TAG,
-                        "handleMessage: Ac received authenticating or closures requesting OK"
-                    )
-                    activity.createToast(activity, msg.obj as String)
+                    val hint = msg.obj as String
+                    if (!TextUtils.isEmpty(hint)) {
+                        activity.createToast(activity, hint)
+                    }
 
-                    // change some ui
-                    // activity.rootView.btnTest2.visibility = View.INVISIBLE
+                    when (msg.arg1) {
+                        STATUS_CODE_OK -> {
+                            // change some ui
+                            // show overlay controller
+                            sendMessage(activity.sMessenger, ACTION_OVERLAY_CONTROLLER_SHOW)
+                        }
 
-                    // show overlay controller
-                    sendMessage(activity.sMessenger, ACTION_OVERLAY_CONTROLLER_SHOW)
+                        STATUS_CODE_ERR -> {
+
+                        }
+                    }
                 }
-
             }
         }
     }

@@ -277,23 +277,25 @@ class BluetoothLeService : Service() {
 
     /**
      * Service Handler
+     * handle messages from Activity
      */
     internal class ServiceHandler(
         private val service: BluetoothLeService
     ) : Handler(Looper.getMainLooper()) {
         override fun handleMessage(msg: Message) {
-            when (msg.what) {
-                ACTION_CLIENT_MESSENGER -> service.cMessenger = msg.replyTo
+            service.apply {
+                when (msg.what) {
+                    ACTION_CLIENT_MESSENGER -> cMessenger = msg.replyTo
 
-                ACTION_CONNECTING -> service.startBleScan()
-                ACTION_OVERLAY_CONTROLLER_SHOW -> service.openOverlay()
+                    ACTION_CONNECTING -> startBleScan()
+                    ACTION_OVERLAY_CONTROLLER_SHOW -> openOverlay()
 
-                ACTION_KEY_TO_WHITELIST_ADDING -> service.addKey()
-                ACTION_EPHEMERAL_KEY_REQUESTING -> service.requestEphemeralKey()
-                ACTION_AUTHENTICATING -> service.authenticate()
+                    ACTION_KEY_TO_WHITELIST_ADDING -> addKey()
+                    ACTION_EPHEMERAL_KEY_REQUESTING -> requestEphemeralKey()
+                    ACTION_AUTHENTICATING -> authenticate()
 
-                ACTION_CLOSURES_REQUESTING -> service
-                    .openPassengerDoor(if (msg.obj == null) false else msg.obj as Boolean)
+                    ACTION_CLOSURES_REQUESTING -> openPassengerDoor(if (msg.obj == null) false else msg.obj as Boolean)
+                }
             }
         }
     }
@@ -329,6 +331,7 @@ class BluetoothLeService : Service() {
             stopBleScan()
         } else {
             mScanning = true
+            cleanDisplayCheckData()
 
             // create scan filter
             val filters = mutableListOf<ScanFilter>().apply {
@@ -414,7 +417,8 @@ class BluetoothLeService : Service() {
 
     /**
      * authenticate
-     * step 3 the last step in add key to white list procedure
+     * step 3
+     * the last step in add key to white list procedure
      */
     private fun authenticate() {
         Log.i(TAG, "authenticate: ")
@@ -452,12 +456,10 @@ class BluetoothLeService : Service() {
 
         // authentication_request struct
         // Tesla response heart beat package
-        resp.authenticationRequest?.let { request->
+        resp.authenticationRequest?.let { request ->
             val token = request.sessionInfo.token
             sendMessage(
-                cMessenger,
-                ACTION_TOAST,
-                "I am alive"
+                cMessenger, ACTION_TOAST, "I am alive"
             )
             return@with
         }
@@ -481,10 +483,7 @@ class BluetoothLeService : Service() {
                 displayDataAppendOnAc("command counter error")
 
                 sendMessage(
-                    cMessenger,
-                    ACTION_CLOSURES_REQUESTING_RESP,
-                    "counter error",
-                    STATUS_CODE_ERR
+                    cMessenger, ACTION_CLOSURES_REQUESTING_RESP, "counter error", STATUS_CODE_ERR
                 )
             }
         }
@@ -518,5 +517,12 @@ class BluetoothLeService : Service() {
         val builder: StringBuilder = StringBuilder(printCheckData.value!!)
         builder.append(data)
         printCheckData.postValue(builder.toString())
+    }
+
+    /**
+     * clean check data
+     */
+    private fun cleanDisplayCheckData() {
+        printCheckData.postValue("")
     }
 }

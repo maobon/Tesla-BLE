@@ -126,20 +126,23 @@ class MainActivity : AppCompatActivity() {
                 ACTION_EPHEMERAL_KEY_REQUESTING_RESP -> {}
 
                 ACTION_AUTHENTICATING_RESP, ACTION_CLOSURES_REQUESTING_RESP -> {
-                    val hint = msg.obj as String
-                    if (!TextUtils.isEmpty(hint)) {
-                        activity.createToast(activity, hint)
-                    }
-
-                    when (msg.arg1) {
-                        STATUS_CODE_OK -> {
-                            // change some ui
-                            // show overlay controller
-                            sendMessage(activity.sMessenger, ACTION_OVERLAY_CONTROLLER_SHOW)
+                    activity.apply {
+                        val hint = msg.obj as String
+                        if (!TextUtils.isEmpty(hint)) {
+                            activity.createToast(activity, hint)
                         }
 
-                        STATUS_CODE_ERR -> {
+                        // todo ??? no effect
+                        when (msg.arg1) {
+                            STATUS_CODE_OK -> {
+                                // change some ui
+                                // show overlay controller
+                                sendMessage(activity.sMessenger, ACTION_OVERLAY_CONTROLLER_SHOW)
+                            }
 
+                            STATUS_CODE_ERR -> {
+
+                            }
                         }
                     }
                 }
@@ -159,16 +162,14 @@ class MainActivity : AppCompatActivity() {
 
         // -------------------------
         // scan and connect to vehicle
-        rootView.btnTest1.setOnClickListener {
-
+        rootView.btnTest1.setOnClickListener { btn ->
             if (!hasRequiredBluetoothPermissions()) {
                 requestRelevantRuntimePermissions(
                     ::requestLocationPermission, ::requestBluetoothPermissions
                 )
             } else {
                 checkSwitchStatus {
-                    it.isEnabled = false
-                    rootView.tvReceivedData.text = ""
+                    btn.isEnabled = false
                     sendMessage(sMessenger, ACTION_CONNECTING)
                 }
             }

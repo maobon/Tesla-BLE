@@ -55,14 +55,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mBluetoothUtil: BluetoothUtil
 
     private var sMessenger: Messenger? = null
+    private var mServiceConnImpl: ServiceConnection = BluetoothServiceLeConn()
+
     private val mClientHandler by lazy {
         ClientHandler(this@MainActivity)
     }
 
-    private var mServiceConnImpl: ServiceConnection = BluetoothServiceLeConn()
+    private var mBound = false
 
     inner class BluetoothServiceLeConn : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            mBound = true
             sMessenger = Messenger(service)
 
             Message.obtain().apply {
@@ -73,6 +76,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
+            mBound = false
             sMessenger = null
         }
     }
@@ -145,14 +149,17 @@ class MainActivity : AppCompatActivity() {
         // -------------------------
         // scan and connect to vehicle
         rootView.btnTest1.setOnClickListener {
+
             if (!hasRequiredBluetoothPermissions()) {
                 requestRelevantRuntimePermissions(
                     ::requestLocationPermission, ::requestBluetoothPermissions
                 )
             } else {
-                it.isEnabled = false
-                rootView.tvReceivedData.text = ""
-                sendMessage(sMessenger, ACTION_CONNECTING)
+                checkSwitchStatus {
+                    it.isEnabled = false
+                    rootView.tvReceivedData.text = ""
+                    sendMessage(sMessenger, ACTION_CONNECTING)
+                }
             }
         }
 
@@ -160,9 +167,7 @@ class MainActivity : AppCompatActivity() {
         rootView.btnTest1.setOnLongClickListener {
             // foreground service will be destroyed
             stopBluetoothLeService()
-
-            // todo close the app .................
-            // finish()
+            finish()
             true
         }
 
@@ -185,16 +190,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-
-        if (!mBluetoothUtil.isBluetoothEnable()) {
-            promptEnableBluetooth()
-        }
-
-        if(!isLocationEnable()){
-            enableLocation(this@MainActivity)
-        }
-
-        checkOverlayPermission()
         startService()
 
         bindService(
@@ -241,9 +236,11 @@ class MainActivity : AppCompatActivity() {
             }
 
             allGranted && hasRequiredBluetoothPermissions() -> {
-                // todo core method ...
-                sendMessage(sMessenger, ACTION_CONNECTING)
-                rootView.btnTest1.isEnabled = false
+                // todo onExpected
+                checkSwitchStatus {
+                    rootView.btnTest1.isEnabled = false
+                    sendMessage(sMessenger, ACTION_CONNECTING)
+                }
             }
 
             else -> {
@@ -262,10 +259,11 @@ class MainActivity : AppCompatActivity() {
     private fun promptEnableBluetooth() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) {
             // Insufficient permission to prompt for Bluetooth enabling
-            Log.d(TAG, "Insufficient permission to prompt for Bluetooth enabling")
+            Log.e(TAG, "Insufficient permission to prompt for Bluetooth enabling")
             return
         }
 
+        // request enable bluetooth
         if (!mBluetoothUtil.isBluetoothEnable()) {
             Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE).apply {
                 mBluetoothEnablingResult.launch(this)
@@ -278,7 +276,10 @@ class MainActivity : AppCompatActivity() {
     ) {
         if (it.resultCode == Activity.RESULT_OK) {
             // start scan
-            sendMessage(sMessenger, ACTION_CONNECTING)
+            checkSwitchStatus {
+                rootView.btnTest1.isEnabled = false
+                sendMessage(sMessenger, ACTION_CONNECTING)
+            }
         } else {
             promptEnableBluetooth()
         }
@@ -295,12 +296,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     // method to ask user to grant the Overlay permission
-    private fun checkOverlayPermission() {
+    private fun checkOverlayPermission(onProcedure: (() -> Unit)?) {
         if (!Settings.canDrawOverlays(this)) {
             // send user to the device settings
             val myIntent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
             startActivity(myIntent)
+            return
         }
+
+        onProcedure?.invoke()
     }
 
     // method for starting the service
@@ -316,9 +320,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun stopBluetoothLeService(){
-        // unbindService(mServiceConnImpl)
-
+    private fun stopBluetoothLeService() {
         Intent(this@MainActivity, BluetoothLeService::class.java).apply {
             action = SERVICE_ACTION_STOP
             startService(this)
@@ -327,10 +329,31 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // unbindService(mServiceConnImpl)
+
+        if (mBound) unbindService(mServiceConnImpl)
     }
 
     private companion object {
         private const val TAG = "MainActivity"
+    }
+
+    /**
+     * before process expect procedure check switch status
+     *
+     * @param onProcedure expect procedure. null will only check switch status
+     */
+    private fun checkSwitchStatus(onProcedure: (() -> Unit)? = null) {
+        if (!mBluetoothUtil.isBluetoothEnable()) {
+            promptEnableBluetooth()
+            return
+        }
+        if (!isLocationEnable()) {
+            enableLocation(this@MainActivity)
+            return
+        }
+
+        checkOverlayPermission {
+            onProcedure?.invoke()
+        }
     }
 }

@@ -450,6 +450,19 @@ class BluetoothLeService : Service() {
         resp: vcsec.FromVCSECMessage, onExpected: () -> Unit
     ) = with(resp) {
 
+        // authentication_request struct
+        // Tesla response heart beat package
+        resp.authenticationRequest?.let { request->
+            val token = request.sessionInfo.token
+            sendMessage(
+                cMessenger,
+                ACTION_TOAST,
+                "I am alive"
+            )
+            return@with
+        }
+
+        // Tesla MCU real response
         val errorDesc = commandStatus.operationStatus.name
         if (errorDesc == TESLA_MSG_OPERATION_STATUS_ERR) {
             val desc = commandStatus.signedMessageStatus.signedMessageInformation.name
@@ -466,6 +479,7 @@ class BluetoothLeService : Service() {
             } else {
                 Log.e(TAG, "checkVehicleResponseMessageStatus: command counter error")
                 displayDataAppendOnAc("command counter error")
+
                 sendMessage(
                     cMessenger,
                     ACTION_CLOSURES_REQUESTING_RESP,

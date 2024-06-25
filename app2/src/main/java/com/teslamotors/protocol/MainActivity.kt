@@ -86,6 +86,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Ac's Handler
+     * this handler instance give to Service. Use to received Service response.
+     *
+     * @property activity
+     */
     internal class ClientHandler(
         private val activity: MainActivity
     ) : Handler(Looper.getMainLooper()) {

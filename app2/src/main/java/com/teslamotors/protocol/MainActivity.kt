@@ -4,11 +4,14 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -23,6 +26,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.lifecycle.MutableLiveData
 import com.teslamotors.protocol.ble.BluetoothUtil
 import com.teslamotors.protocol.databinding.ActivityMainBinding
 import com.teslamotors.protocol.ui.DialogUtil
@@ -48,6 +52,7 @@ import com.teslamotors.protocol.util.isLocationEnable
 import com.teslamotors.protocol.util.requestRelevantRuntimePermissions
 import com.teslamotors.protocol.util.sendMessage
 import com.teslamotors.protocol.util.useSharedKey
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -186,6 +191,22 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG, "AC print check data=$data")
             rootView.tvReceivedData.text = data
         }
+
+        // ---------------------------
+        registerReceiver(
+            locationToggleReceiver, IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION)
+        )
+
+        locationToggle.observe(this@MainActivity) { flag ->
+            if (flag) {
+                checkSwitchStatus {
+                    rootView.btnTest1.isEnabled = false
+                    sendMessage(sMessenger, ACTION_CONNECTING)
+                }
+            } else {
+                enableLocation(this@MainActivity)
+            }
+        }
     }
 
     override fun onResume() {
@@ -297,7 +318,7 @@ class MainActivity : AppCompatActivity() {
 
     // method to ask user to grant the Overlay permission
     private fun checkOverlayPermission(onProcedure: (() -> Unit)?) {
-        if (!Settings.canDrawOverlays(this)) {
+        if (!Settings.canDrawOverlays(this@MainActivity)) {
             // send user to the device settings
             val myIntent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
             startActivity(myIntent)
@@ -331,6 +352,7 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
 
         if (mBound) unbindService(mServiceConnImpl)
+        unregisterReceiver(locationToggleReceiver)
     }
 
     private companion object {
@@ -356,4 +378,20 @@ class MainActivity : AppCompatActivity() {
             onProcedure?.invoke()
         }
     }
+
+    // --------------------------
+    private val locationToggle = MutableLiveData<Boolean>()
+
+    /**
+     * Following broadcast receiver is to listen the Location button toggle state in Android.
+     */
+    private val locationToggleReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == LocationManager.PROVIDERS_CHANGED_ACTION) {
+                // Make an action or refresh an already managed state.
+                if (isLocationEnable()) locationToggle.postValue(true)
+            }
+        }
+    }
+
 }
